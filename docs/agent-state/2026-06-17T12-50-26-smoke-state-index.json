@@ -1,0 +1,223 @@
+{
+  "schemaVersion": "code-agent-state-artifact-index.v1",
+  "generatedAt": "2026-06-17T12:50:26.407Z",
+  "countsByKind": {
+    "ui-demo-html": 1,
+    "ui-html": 1,
+    "ui": 1
+  },
+  "latestByKind": {
+    "ui-demo-html": {
+      "id": "statesnapshot_ae117cd7-0baf-469f-982e-009f919bdd5b",
+      "kind": "ui-demo-html",
+      "title": "smoke ui demo",
+      "path": "docs/agent-state/2026-06-17T12-50-26-smoke-ui-demo.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    "ui-html": {
+      "id": "statesnapshot_4b647c81-644a-4074-ae82-a5e9c9db5f6b",
+      "kind": "ui-html",
+      "title": "smoke ui html",
+      "path": "docs/agent-state/2026-06-17T12-50-25-smoke-ui-html.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    "ui": {
+      "id": "statesnapshot_f7ea9076-2f4b-404a-b9eb-6539262f0100",
+      "kind": "ui",
+      "title": "smoke ui state",
+      "path": "docs/agent-state/2026-06-17T12-50-25-smoke-ui-state.json",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    }
+  },
+  "items": [
+    {
+      "id": "statesnapshot_ae117cd7-0baf-469f-982e-009f919bdd5b",
+      "kind": "ui-demo-html",
+      "title": "smoke ui demo",
+      "path": "docs/agent-state/2026-06-17T12-50-26-smoke-ui-demo.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    {
+      "id": "statesnapshot_4b647c81-644a-4074-ae82-a5e9c9db5f6b",
+      "kind": "ui-html",
+      "title": "smoke ui html",
+      "path": "docs/agent-state/2026-06-17T12-50-25-smoke-ui-html.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    {
+      "id": "statesnapshot_f7ea9076-2f4b-404a-b9eb-6539262f0100",
+      "kind": "ui",
+      "title": "smoke ui state",
+      "path": "docs/agent-state/2026-06-17T12-50-25-smoke-ui-state.json",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_39df440f-989e-45ae-86ee-7ff1324f684d",
+          "approval_6f30e3d1-4eec-4c5e-8568-a461ba751505"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true
+      },
+      "latestWorkflow": {
+        "id": "workflow_0c2c8218-2807-4a7b-8f59-5be5f5ac098d",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    }
+  ]
+}

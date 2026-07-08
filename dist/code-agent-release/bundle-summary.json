@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "code-agent-bundle-summary.v1",
+  "bundleType": "release",
+  "generatedBy": "scripts/package-release.sh",
+  "includes": {
+    "apps": [
+      "apps/cli",
+      "apps/demo"
+    ],
+    "docs": [
+      "README.md",
+      "CHANGELOG.md",
+      "RELEASE.md",
+      "ROADMAP.md",
+      "docs/"
+    ],
+    "runtime": [
+      "packages/",
+      "prompts/",
+      "skills/"
+    ],
+    "plugin": [
+      ".codex-plugin/",
+      "hooks/"
+    ]
+  }
+}

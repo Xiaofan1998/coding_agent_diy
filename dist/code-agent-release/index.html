@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Code Agent Release Bundle</title>
+  <style>
+    body { margin: 0; font-family: Georgia, "Palatino Linotype", serif; background: #f5f0e6; color: #182126; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 18px 56px; }
+    section { border: 1px solid #d8c8ab; background: rgba(255,250,241,0.92); padding: 18px; margin-bottom: 16px; }
+    h1, h2 { margin: 0 0 10px; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    a { color: #b14d2c; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { font-family: "SFMono-Regular", Menlo, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main>
+    <section>
+      <h1>Code Agent Release Bundle</h1>
+      <p>This bundle packages the coding-agent runtime, demo, docs, plugin wrapper, and release metadata.</p>
+    </section>
+    <section>
+      <h2>Core Docs</h2>
+      <ul>
+        <li><a href="./README.md">README.md</a></li>
+        <li><a href="./CHANGELOG.md">CHANGELOG.md</a></li>
+        <li><a href="./RELEASE.md">RELEASE.md</a></li>
+        <li><a href="./ROADMAP.md">ROADMAP.md</a></li>
+        <li><a href="./bundle-summary.json"><code>bundle-summary.json</code></a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Runtime And Demo</h2>
+      <ul>
+        <li><a href="./apps/cli/index.js"><code>apps/cli/index.js</code></a></li>
+        <li><a href="./apps/demo/index.html"><code>apps/demo/index.html</code></a></li>
+        <li><a href="./apps/demo/README.md"><code>apps/demo/README.md</code></a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Plugin Wrapper</h2>
+      <ul>
+        <li><a href="./.codex-plugin/plugin.json"><code>.codex-plugin/plugin.json</code></a></li>
+        <li><a href="./hooks/session-start-codex"><code>hooks/session-start-codex</code></a></li>
+      </ul>
+    </section>
+    <section>
+      <h2>Integration Docs</h2>
+      <ul>
+        <li><a href="./docs/README.md"><code>docs/README.md</code></a></li>
+        <li><a href="./docs/integration-guide.md"><code>docs/integration-guide.md</code></a></li>
+        <li><a href="./docs/machine-state-api.md"><code>docs/machine-state-api.md</code></a></li>
+        <li><a href="./docs/machine-state-schema.md"><code>docs/machine-state-schema.md</code></a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

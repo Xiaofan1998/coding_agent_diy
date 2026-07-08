@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "code-agent-ui-state.v1",
+  "generatedAt": "2026-06-17T10:14:38.261Z",
+  "projectRoot": "/Users/zyb/Downloads/xfbo_homework/code/code-agent-0617",
+  "hero": {
+    "goal": "smoke test goal",
+    "workflowStatus": "pending_approval",
+    "governanceLabel": "governance-hold"
+  },
+  "cards": [
+    {
+      "id": "plan",
+      "title": "Plan",
+      "value": "0/1",
+      "detail": "completed"
+    },
+    {
+      "id": "approvals",
+      "title": "Open Approvals",
+      "value": "2",
+      "detail": "approval_c388649a-f810-4944-9176-07e782b82758, approval_cc4b18cb-47d4-4eaa-8994-ce6d921582b5"
+    },
+    {
+      "id": "workflow",
+      "title": "Latest Workflow",
+      "value": "workflow_0b45b38f-1d7d-4092-a09f-209f3109092f",
+      "detail": "pending_approval"
+    },
+    {
+      "id": "recommendations",
+      "title": "Suggested First Tools",
+      "value": "5",
+      "detail": "list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, list_workflow_bundles"
+    }
+  ],
+  "governance": {
+    "openApprovalCount": 2,
+    "openApprovalIds": [
+      "approval_c388649a-f810-4944-9176-07e782b82758",
+      "approval_cc4b18cb-47d4-4eaa-8994-ce6d921582b5"
+    ],
+    "latestWorkflowStatus": "pending_approval",
+    "latestWorkflowReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ],
+    "governanceHoldActive": true,
+    "approvalPendingActive": true
+  },
+  "recommendations": {
+    "suggestedFirstTools": [
+      "list_approval_requests",
+      "read_approval_request",
+      "read_approval_artifact",
+      "get_dashboard_summary",
+      "list_workflow_bundles"
+    ],
+    "suggestedNextReadLabels": [
+      "approvalArtifact:approvalartifact_fc5e7c70-ab6a-4b53-9257-202f942988a3",
+      "approvalRequest:approval_c388649a-f810-4944-9176-07e782b82758",
+      "workflowArtifact:workflowartifact_6b1ce099-fe2b-47f0-a5b1-bfd5b390c378",
+      "dashboardArtifact:dashboardartifact_db0e54aa-dadc-4770-b81b-442ab2514f38",
+      "bundleIndexArtifact:bundleartifact_a8d9f7c2-39c4-4993-94fd-ab99a6c66e39",
+      "approvalArtifact:approvalartifact_fc5e7c70-ab6a-4b53-9257-202f942988a3",
+      "workflowRun:workflow_0b45b38f-1d7d-4092-a09f-209f3109092f",
+      "planArtifact:planartifact_1684a49d-d1a3-445c-96f1-3cb99b9db880",
+      "reviewArtifact:reviewartifact_2eb2c358-53f2-4722-aa84-90d0a0f4b50e",
+      "traceArtifact:traceartifact_e5b36043-672b-4ad1-a671-d5ad72de6611"
+    ]
+  },
+  "latestWorkflow": {
+    "id": "workflow_0b45b38f-1d7d-4092-a09f-209f3109092f",
+    "status": "pending_approval",
+    "statusReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ]
+  }
+}

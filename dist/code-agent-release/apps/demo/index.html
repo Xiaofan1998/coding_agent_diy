@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Code Agent Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="eyebrow">code-agent demo</div>
+      <h1>Machine State Demo</h1>
+      <p class="sub">
+        Load exported <code>ui-state</code> and <code>state artifact index</code> files, then inspect the
+        governance-aware dashboard in a browser.
+      </p>
+    </header>
+
+    <section class="controls">
+      <div class="panel">
+        <h2>Load JSON</h2>
+        <label>
+          UI State JSON
+          <input id="ui-file" type="file" accept=".json,application/json" />
+        </label>
+        <label>
+          State Index JSON
+          <input id="index-file" type="file" accept=".json,application/json" />
+        </label>
+      </div>
+
+      <div class="panel">
+        <h2>Fetch By Path</h2>
+        <label>
+          Preview Filter
+          <select id="preview-filter">
+            <option value="">all</option>
+            <option value="clear">clear</option>
+            <option value="approval-pending">approval-pending</option>
+            <option value="governance-hold">governance-hold</option>
+            <option value="goal-blocked">goal-blocked</option>
+          </select>
+        </label>
+        <button id="load-preview-btn" type="button">Load Current Preview State</button>
+        <label>
+          Preview State URL
+          <input id="preview-url" type="text" placeholder="/preview-state.json?state=approval-pending" />
+        </label>
+        <label>
+          UI State URL
+          <input id="ui-url" type="text" placeholder="/docs/agent-state/example-ui.json" />
+        </label>
+        <label>
+          State Index URL
+          <input id="index-url" type="text" placeholder="/docs/agent-state/example-index.json" />
+        </label>
+        <button id="fetch-btn" type="button">Fetch JSON</button>
+      </div>
+    </section>
+
+    <section id="status" class="status">Waiting for machine-state payloads.</section>
+    <section id="summary-bar" class="summary-bar hidden"></section>
+    <section id="filter-pills" class="filter-pills hidden"></section>
+
+    <section id="hero" class="hero-card hidden"></section>
+    <section id="cards" class="card-grid hidden"></section>
+    <section id="sections" class="sections hidden"></section>
+
+    <section class="columns">
+      <section class="panel">
+        <h2>Latest By Kind</h2>
+        <ul id="latest-by-kind"></ul>
+      </section>
+      <section class="panel">
+        <h2>Artifact Counts</h2>
+        <ul id="counts-by-kind"></ul>
+      </section>
+    </section>
+
+    <section class="panel">
+      <h2>Raw Governance</h2>
+      <pre id="governance-json">{}</pre>
+    </section>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

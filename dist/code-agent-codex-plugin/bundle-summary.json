@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "code-agent-bundle-summary.v1",
+  "bundleType": "codex-plugin",
+  "generatedBy": "scripts/package-codex-plugin.sh",
+  "paths": {
+    "pluginManifest": ".codex-plugin/plugin.json",
+    "hooks": [
+      "hooks/hooks-codex.json",
+      "hooks/session-start-codex"
+    ],
+    "skills": [
+      "skills/builtin"
+    ],
+    "docs": [
+      "docs/README.md",
+      "docs/machine-state-api.md",
+      "docs/machine-state-schema.md",
+      "docs/integration-guide.md"
+    ]
+  }
+}

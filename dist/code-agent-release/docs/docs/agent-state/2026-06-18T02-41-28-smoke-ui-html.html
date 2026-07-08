@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>smoke ui html</title>
+  <style>
+    :root { --bg:#f3efe4; --ink:#1d252b; --muted:#5d6972; --card:#fffaf2; --line:#d7cbb0; --accent:#b04d28; --accent2:#2f6762; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Palatino Linotype", serif;
+      background:
+        radial-gradient(circle at top left, rgba(176,77,40,0.14), transparent 26rem),
+        radial-gradient(circle at bottom right, rgba(47,103,98,0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 18px 50px; }
+    .hero { border: 1px solid var(--line); background: rgba(255,250,242,0.96); padding: 22px; margin-bottom: 18px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin-bottom: 8px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1.03; }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .badge { display: inline-block; border: 1px solid var(--ink); padding: 6px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .grid, .sections { display: grid; gap: 14px; }
+    .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 22px; }
+    .sections { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 22px; }
+    .card, .panel { border: 1px solid var(--line); background: var(--card); padding: 16px; }
+    .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 10px; }
+    .card-value { font-size: 30px; color: var(--accent); margin-bottom: 8px; }
+    .card-detail, .panel ul { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .panel h2 { margin: 0 0 10px; font-size: 18px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">code-agent-ui-state.v1</div>
+      <h1>smoke test goal</h1>
+      <div class="sub">Workflow: pending_approval</div>
+      <div class="badge">governance-hold</div>
+      <div class="sub">Strategy: balanced</div>
+    </section>
+    <section class="grid"><article class="card"><div class="card-title">Plan</div><div class="card-value">0/1</div><div class="card-detail">completed</div></article>
+<article class="card"><div class="card-title">Open Approvals</div><div class="card-value">2</div><div class="card-detail">approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d, approval_c345b450-78c0-4f03-897e-ac8f049eb184</div></article>
+<article class="card"><div class="card-title">Latest Workflow</div><div class="card-value">workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9</div><div class="card-detail">pending_approval</div></article>
+<article class="card"><div class="card-title">Strategy Mode</div><div class="card-value">balanced</div><div class="card-detail">risk=caution</div></article>
+<article class="card"><div class="card-title">Suggested First Tools</div><div class="card-value">5</div><div class="card-detail">list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, get_plan_summary</div></article>
+<article class="card"><div class="card-title">Goal Status</div><div class="card-value">active</div><div class="card-detail">Pending approvals are blocking progress: approval_e9baea2c-f1a5-4f30-a0cc-a62500be9d64.</div></article>
+<article class="card"><div class="card-title">Goal Recovery</div><div class="card-value">5</div><div class="card-detail">approvals list, approval-artifacts list, workflow list, workflow-artifacts list, machine-state show</div></article>
+<article class="card"><div class="card-title">Linked Subagents</div><div class="card-value">1</div><div class="card-detail">1 pending review</div></article>
+<article class="card"><div class="card-title">Plan Summary</div><div class="card-value">planrun_1781750484001</div><div class="card-detail">0/1 items</div></article></section>
+    <section class="sections"><section class="panel"><h2>Overview</h2><ul><li>Plan: 0/1 (completed)</li><li>Latest Workflow: workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9 (pending_approval)</li><li>Linked Subagents: 1 (1 pending review)</li><li>Strategy Mode: balanced (risk=caution)</li></ul></section>
+<section class="panel"><h2>Governance</h2><ul><li>Open Approvals: 2 (approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d, approval_c345b450-78c0-4f03-897e-ac8f049eb184)</li><li>Goal Status: active (Pending approvals are blocking progress: approval_e9baea2c-f1a5-4f30-a0cc-a62500be9d64.)</li><li>Reason codes: governance_hold, approval_pending, review_plan_needs_attention, review_repo_needs_attention, review_code_needs_attention</li></ul></section>
+<section class="panel"><h2>Recommendations</h2><ul><li>Suggested First Tools: 5 (list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, get_plan_summary)</li><li>Goal Recovery: 5 (approvals list, approval-artifacts list, workflow list, workflow-artifacts list, machine-state show)</li><li>Next reads: approvalArtifact:approvalartifact_9b9309c9-1ee8-47db-9bd7-fc0081903d38, approvalRequest:approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d, workflowArtifact:workflowartifact_b150091e-ed8d-4024-a543-00ab3abcf166, dashboardArtifact:dashboardartifact_08ca0254-557c-44e2-b3f2-d68f8d7b39b4, bundleIndexArtifact:bundleartifact_7dbf12bc-3f94-4837-99be-6541b6a2450f, approvalArtifact:approvalartifact_9b9309c9-1ee8-47db-9bd7-fc0081903d38, workflowRun:workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9, planArtifact:planartifact_aa5ac5cf-636c-4ce3-a57d-4840e2c8796b, reviewArtifact:reviewartifact_4a08f566-1974-4832-a8ad-9274a1f93a31, traceArtifact:traceartifact_3fdb231f-7b2f-4db6-b861-25c1fcb179e6</li><li>Recommended actions: Resolve approvals [approvals list], Review subagent outputs [subagents summary], Focus plan item 1 [plan summary], Inspect workflow hold [workflow list]</li></ul></section>
+<section class="panel"><h2>Plan Execution</h2><ul><li>Plan Summary: planrun_1781750484001 (0/1 items)</li><li>Linked Subagents: 1 (1 pending review)</li></ul></section></section>
+    <section class="panel"><h2>Governance</h2><pre>{
+  &quot;openApprovalCount&quot;: 2,
+  &quot;openApprovalIds&quot;: [
+    &quot;approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d&quot;,
+    &quot;approval_c345b450-78c0-4f03-897e-ac8f049eb184&quot;
+  ],
+  &quot;latestWorkflowStatus&quot;: &quot;pending_approval&quot;,
+  &quot;latestWorkflowReasonCodes&quot;: [
+    &quot;governance_hold&quot;,
+    &quot;approval_pending&quot;,
+    &quot;review_plan_needs_attention&quot;,
+    &quot;review_repo_needs_attention&quot;,
+    &quot;review_code_needs_attention&quot;
+  ],
+  &quot;governanceHoldActive&quot;: true,
+  &quot;approvalPendingActive&quot;: true,
+  &quot;goalBlockedActive&quot;: false,
+  &quot;blockedGoalId&quot;: null,
+  &quot;blockedGoalObjective&quot;: null,
+  &quot;blockedGoalTurnCount&quot;: 0,
+  &quot;blockedGoalBlockCount&quot;: 0,
+  &quot;blockedGoalLastBlockerCode&quot;: null,
+  &quot;blockedGoalLastBlockerMessage&quot;: null,
+  &quot;recoverySuggestions&quot;: [
+    &quot;approvals list&quot;,
+    &quot;approval-artifacts list&quot;,
+    &quot;workflow list&quot;,
+    &quot;workflow-artifacts list&quot;,
+    &quot;machine-state show&quot;
+  ]
+}</pre></section>
+    <section class="panel"><h2>Recommendations</h2><pre>{
+  &quot;suggestedFirstTools&quot;: [
+    &quot;list_approval_requests&quot;,
+    &quot;read_approval_request&quot;,
+    &quot;read_approval_artifact&quot;,
+    &quot;get_dashboard_summary&quot;,
+    &quot;get_plan_summary&quot;
+  ],
+  &quot;suggestedNextReadLabels&quot;: [
+    &quot;approvalArtifact:approvalartifact_9b9309c9-1ee8-47db-9bd7-fc0081903d38&quot;,
+    &quot;approvalRequest:approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d&quot;,
+    &quot;workflowArtifact:workflowartifact_b150091e-ed8d-4024-a543-00ab3abcf166&quot;,
+    &quot;dashboardArtifact:dashboardartifact_08ca0254-557c-44e2-b3f2-d68f8d7b39b4&quot;,
+    &quot;bundleIndexArtifact:bundleartifact_7dbf12bc-3f94-4837-99be-6541b6a2450f&quot;,
+    &quot;approvalArtifact:approvalartifact_9b9309c9-1ee8-47db-9bd7-fc0081903d38&quot;,
+    &quot;workflowRun:workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9&quot;,
+    &quot;planArtifact:planartifact_aa5ac5cf-636c-4ce3-a57d-4840e2c8796b&quot;,
+    &quot;reviewArtifact:reviewartifact_4a08f566-1974-4832-a8ad-9274a1f93a31&quot;,
+    &quot;traceArtifact:traceartifact_3fdb231f-7b2f-4db6-b861-25c1fcb179e6&quot;
+  ],
+  &quot;recommendedActions&quot;: [
+    {
+      &quot;kind&quot;: &quot;approval&quot;,
+      &quot;label&quot;: &quot;Resolve approvals&quot;,
+      &quot;detail&quot;: &quot;approval_3fd7a32e-05e0-4e72-8ac6-81d824b9e53d, approval_c345b450-78c0-4f03-897e-ac8f049eb184&quot;,
+      &quot;command&quot;: &quot;approvals list&quot;
+    },
+    {
+      &quot;kind&quot;: &quot;subagent&quot;,
+      &quot;label&quot;: &quot;Review subagent outputs&quot;,
+      &quot;detail&quot;: &quot;1 pending review&quot;,
+      &quot;command&quot;: &quot;subagents summary&quot;
+    },
+    {
+      &quot;kind&quot;: &quot;plan&quot;,
+      &quot;label&quot;: &quot;Focus plan item 1&quot;,
+      &quot;detail&quot;: &quot;governance hold item&quot;,
+      &quot;command&quot;: &quot;plan summary&quot;
+    },
+    {
+      &quot;kind&quot;: &quot;workflow&quot;,
+      &quot;label&quot;: &quot;Inspect workflow hold&quot;,
+      &quot;detail&quot;: &quot;workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9&quot;,
+      &quot;command&quot;: &quot;workflow list&quot;
+    }
+  ]
+}</pre></section>
+    <section class="panel"><h2>Latest Workflow</h2><pre>{
+  &quot;id&quot;: &quot;workflow_40e1e1ff-7a66-4096-82dc-c75336806eb9&quot;,
+  &quot;status&quot;: &quot;pending_approval&quot;,
+  &quot;statusReasonCodes&quot;: [
+    &quot;governance_hold&quot;,
+    &quot;approval_pending&quot;,
+    &quot;review_plan_needs_attention&quot;,
+    &quot;review_repo_needs_attention&quot;,
+    &quot;review_code_needs_attention&quot;
+  ]
+}</pre></section>
+  </main>
+</body>
+</html>

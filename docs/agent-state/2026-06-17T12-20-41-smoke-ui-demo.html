@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>smoke ui demo</title>
+  <style>
+    :root {
+      --bg: #f4efe5;
+      --ink: #192126;
+      --muted: #61707a;
+      --line: #d9c6a8;
+      --card: rgba(255,250,241,0.92);
+      --accent: #b14d2c;
+      --accent2: #2f6864;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Palatino Linotype", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(177,77,44,0.14), transparent 24rem),
+        radial-gradient(circle at bottom right, rgba(47,104,100,0.14), transparent 28rem),
+        var(--bg);
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 18px 56px; }
+    .hero, .panel, .card {
+      border: 1px solid var(--line);
+      background: var(--card);
+    }
+    .hero { padding: 22px; margin-bottom: 18px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin-bottom: 8px; }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 48px); line-height: 1.02; }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .badge { display: inline-block; border: 1px solid var(--ink); padding: 6px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 20px; }
+    .card { padding: 16px; min-height: 140px; }
+    .card-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 10px; }
+    .card-value { font-size: 30px; color: var(--accent); margin-bottom: 8px; }
+    .card-detail { font-size: 14px; line-height: 1.4; color: var(--muted); word-break: break-word; }
+    .columns { display: grid; gap: 16px; grid-template-columns: 1.2fr .8fr; margin-bottom: 20px; }
+    .panel { padding: 16px; }
+    .panel h2 { margin: 0 0 10px; font-size: 18px; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
+    code { font-family: "SFMono-Regular", Menlo, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <main id="app"></main>
+  <script type="application/json" id="demo-data">{"uiPayload":{"schemaVersion":"code-agent-ui-state.v1","generatedAt":"2026-06-17T12:20:41.830Z","projectRoot":"/Users/zyb/Downloads/xfbo_homework/code/code-agent-0617","hero":{"goal":"smoke test goal","workflowStatus":"pending_approval","governanceLabel":"governance-hold"},"cards":[{"id":"plan","title":"Plan","value":"0/1","detail":"completed"},{"id":"approvals","title":"Open Approvals","value":"2","detail":"approval_032a71df-c48e-4f91-b797-b5b03655884e, approval_82625e09-404f-4840-a529-66b45d1f14d0"},{"id":"workflow","title":"Latest Workflow","value":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","detail":"pending_approval"},{"id":"recommendations","title":"Suggested First Tools","value":"5","detail":"list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, list_workflow_bundles"}],"sections":[{"id":"overview","title":"Overview","cardIds":["plan","workflow"]},{"id":"governance","title":"Governance","cardIds":["approvals"],"reasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]},{"id":"recommendations","title":"Recommendations","cardIds":["recommendations"],"nextReadLabels":["approvalArtifact:approvalartifact_bcf66634-64c1-4408-b723-28030699c489","approvalRequest:approval_032a71df-c48e-4f91-b797-b5b03655884e","workflowArtifact:workflowartifact_89bfca1f-4b84-4722-8d6d-5456252828df","dashboardArtifact:dashboardartifact_02cf3586-ab83-4ccc-aeb8-76782fbc4d7e","bundleIndexArtifact:bundleartifact_9de24660-890c-44d9-b249-df318ad4ccff","approvalArtifact:approvalartifact_bcf66634-64c1-4408-b723-28030699c489","workflowRun:workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","planArtifact:planartifact_ba7f8e45-9bd4-4952-b057-80c97c82cacb","reviewArtifact:reviewartifact_459a6e5c-216d-45ed-a4e0-92aa6af03d75","traceArtifact:traceartifact_ce49b463-6627-476e-8ac7-9f72338c480e"]}],"governance":{"openApprovalCount":2,"openApprovalIds":["approval_032a71df-c48e-4f91-b797-b5b03655884e","approval_82625e09-404f-4840-a529-66b45d1f14d0"],"latestWorkflowStatus":"pending_approval","latestWorkflowReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"],"governanceHoldActive":true,"approvalPendingActive":true},"recommendations":{"suggestedFirstTools":["list_approval_requests","read_approval_request","read_approval_artifact","get_dashboard_summary","list_workflow_bundles"],"suggestedNextReadLabels":["approvalArtifact:approvalartifact_bcf66634-64c1-4408-b723-28030699c489","approvalRequest:approval_032a71df-c48e-4f91-b797-b5b03655884e","workflowArtifact:workflowartifact_89bfca1f-4b84-4722-8d6d-5456252828df","dashboardArtifact:dashboardartifact_02cf3586-ab83-4ccc-aeb8-76782fbc4d7e","bundleIndexArtifact:bundleartifact_9de24660-890c-44d9-b249-df318ad4ccff","approvalArtifact:approvalartifact_bcf66634-64c1-4408-b723-28030699c489","workflowRun:workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","planArtifact:planartifact_ba7f8e45-9bd4-4952-b057-80c97c82cacb","reviewArtifact:reviewartifact_459a6e5c-216d-45ed-a4e0-92aa6af03d75","traceArtifact:traceartifact_ce49b463-6627-476e-8ac7-9f72338c480e"]},"latestWorkflow":{"id":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","status":"pending_approval","statusReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]}},"stateIndex":{"schemaVersion":"code-agent-state-artifact-index.v1","generatedAt":"2026-06-17T12:20:41.854Z","countsByKind":{"ui-html":1,"ui":1},"latestByKind":{"ui-html":{"id":"statesnapshot_67d7078c-9921-49fe-9941-3d019416374b","kind":"ui-html","title":"smoke ui html","path":"docs/agent-state/2026-06-17T12-20-41-smoke-ui-html.html","schemaVersion":"code-agent-ui-state.v1","governanceSummary":{"openApprovalCount":2,"openApprovalIds":["approval_032a71df-c48e-4f91-b797-b5b03655884e","approval_82625e09-404f-4840-a529-66b45d1f14d0"],"latestWorkflowStatus":"pending_approval","latestWorkflowReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"],"governanceHoldActive":true,"approvalPendingActive":true},"latestWorkflow":{"id":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","status":"pending_approval","statusReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]}},"ui":{"id":"statesnapshot_4314aa83-8a4d-4ec9-92b6-0a81c35bc7a6","kind":"ui","title":"smoke ui state","path":"docs/agent-state/2026-06-17T12-20-41-smoke-ui-state.json","schemaVersion":"code-agent-ui-state.v1","governanceSummary":{"openApprovalCount":2,"openApprovalIds":["approval_032a71df-c48e-4f91-b797-b5b03655884e","approval_82625e09-404f-4840-a529-66b45d1f14d0"],"latestWorkflowStatus":"pending_approval","latestWorkflowReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"],"governanceHoldActive":true,"approvalPendingActive":true},"latestWorkflow":{"id":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","status":"pending_approval","statusReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]}}},"items":[{"id":"statesnapshot_67d7078c-9921-49fe-9941-3d019416374b","kind":"ui-html","title":"smoke ui html","path":"docs/agent-state/2026-06-17T12-20-41-smoke-ui-html.html","schemaVersion":"code-agent-ui-state.v1","governanceSummary":{"openApprovalCount":2,"openApprovalIds":["approval_032a71df-c48e-4f91-b797-b5b03655884e","approval_82625e09-404f-4840-a529-66b45d1f14d0"],"latestWorkflowStatus":"pending_approval","latestWorkflowReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"],"governanceHoldActive":true,"approvalPendingActive":true},"latestWorkflow":{"id":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","status":"pending_approval","statusReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]}},{"id":"statesnapshot_4314aa83-8a4d-4ec9-92b6-0a81c35bc7a6","kind":"ui","title":"smoke ui state","path":"docs/agent-state/2026-06-17T12-20-41-smoke-ui-state.json","schemaVersion":"code-agent-ui-state.v1","governanceSummary":{"openApprovalCount":2,"openApprovalIds":["approval_032a71df-c48e-4f91-b797-b5b03655884e","approval_82625e09-404f-4840-a529-66b45d1f14d0"],"latestWorkflowStatus":"pending_approval","latestWorkflowReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"],"governanceHoldActive":true,"approvalPendingActive":true},"latestWorkflow":{"id":"workflow_65154929-6816-4a9f-b193-dc1e9155a0a0","status":"pending_approval","statusReasonCodes":["governance_hold","approval_pending","review_plan_needs_attention","review_repo_needs_attention","review_code_needs_attention"]}}]}}</script>
+  <script>
+    const payload = JSON.parse(document.getElementById("demo-data").textContent);
+    const ui = payload.uiPayload || {};
+    const index = payload.stateIndex || {};
+    const cards = new Map((ui.cards || []).map((card) => [card.id, card]));
+    const latestByKind = index.latestByKind || {};
+
+    document.getElementById("app").innerHTML = [
+      renderHero(ui),
+      renderCards(ui.cards || []),
+      renderSections(ui.sections || [], cards),
+      renderArtifactIndex(index),
+      renderLatestByKind(latestByKind)
+    ].join("");
+
+    function renderHero(ui) {
+      const hero = ui.hero || {};
+      return `<section class="hero">
+        <div class="eyebrow">${escapeHtml(ui.schemaVersion || "code-agent-ui-state.v1")}</div>
+        <h1>${escapeHtml(hero.goal || "(none)")}</h1>
+        <div class="sub">Workflow: ${escapeHtml(hero.workflowStatus || "(none)")}</div>
+        <div class="badge">${escapeHtml(hero.governanceLabel || "clear")}</div>
+      </section>`;
+    }
+
+    function renderCards(items) {
+      return `<section class="grid">${items.map((card) => `<article class="card"><div class="card-title">${escapeHtml(card.title || card.id || "Card")}</div><div class="card-value">${escapeHtml(card.value || "")}</div><div class="card-detail">${escapeHtml(card.detail || "")}</div></article>`).join("")}</section>`;
+    }
+
+    function renderSections(sections, cards) {
+      return `<section class="columns">${sections.map((section) => {
+        const lines = (section.cardIds || []).map((id) => {
+          const card = cards.get(id);
+          return card ? `${card.title}: ${card.value} (${card.detail})` : id;
+        });
+        if (section.reasonCodes?.length) lines.push(`Reason codes: ${section.reasonCodes.join(", ")}`);
+        if (section.nextReadLabels?.length) lines.push(`Next reads: ${section.nextReadLabels.join(", ")}`);
+        return `<section class="panel"><h2>${escapeHtml(section.title || section.id || "Section")}</h2><ul>${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></section>`;
+      }).join("")}</section>`;
+    }
+
+    function renderArtifactIndex(index) {
+      const items = index.items || [];
+      const badges = Object.entries(index.countsByKind || {}).map(([kind, count]) => `<span class="badge">${escapeHtml(kind)}: ${escapeHtml(String(count))}</span>`).join("");
+      const rows = items.slice(0, 12).map((item) => `<tr><td>${escapeHtml(item.kind || "")}</td><td>${escapeHtml(item.title || "")}</td><td><code>${escapeHtml(item.path || "")}</code></td><td>${escapeHtml(item.schemaVersion || "")}</td></tr>`).join("");
+      return `<section class="panel"><h2>State Artifact Index</h2><div>${badges}</div><table><thead><tr><th>Kind</th><th>Title</th><th>Path</th><th>Schema</th></tr></thead><tbody>${rows}</tbody></table></section>`;
+    }
+
+    function renderLatestByKind(latestByKind) {
+      const items = Object.entries(latestByKind).map(([kind, item]) => `<li><strong>${escapeHtml(kind)}</strong>: <code>${escapeHtml((item && item.path) || "(none)")}</code></li>`).join("");
+      return `<section class="panel"><h2>Latest By Kind</h2><ul>${items}</ul></section>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+  </script>
+</body>
+</html>

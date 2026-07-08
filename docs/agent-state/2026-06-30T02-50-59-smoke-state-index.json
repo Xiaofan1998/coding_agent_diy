@@ -1,0 +1,307 @@
+{
+  "schemaVersion": "code-agent-state-artifact-index.v1",
+  "generatedAt": "2026-06-30T02:50:59.665Z",
+  "countsByKind": {
+    "ui-demo-html": 1,
+    "ui-html": 1,
+    "ui": 1
+  },
+  "latestByKind": {
+    "ui-demo-html": {
+      "id": "statesnapshot_01f0fb81-5d63-4658-a69c-aaf8148fe06c",
+      "kind": "ui-demo-html",
+      "title": "smoke ui demo",
+      "path": "docs/agent-state/2026-06-30T02-50-59-smoke-ui-demo.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    "ui-html": {
+      "id": "statesnapshot_f06d711b-9824-4fd8-9ad8-75723da92fe1",
+      "kind": "ui-html",
+      "title": "smoke ui html",
+      "path": "docs/agent-state/2026-06-30T02-50-59-smoke-ui-html.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    "ui": {
+      "id": "statesnapshot_614fdd16-3571-4479-b40f-f1280ec5b5d5",
+      "kind": "ui",
+      "title": "smoke ui state",
+      "path": "docs/agent-state/2026-06-30T02-50-58-smoke-ui-state.json",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    }
+  },
+  "items": [
+    {
+      "id": "statesnapshot_01f0fb81-5d63-4658-a69c-aaf8148fe06c",
+      "kind": "ui-demo-html",
+      "title": "smoke ui demo",
+      "path": "docs/agent-state/2026-06-30T02-50-59-smoke-ui-demo.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    {
+      "id": "statesnapshot_f06d711b-9824-4fd8-9ad8-75723da92fe1",
+      "kind": "ui-html",
+      "title": "smoke ui html",
+      "path": "docs/agent-state/2026-06-30T02-50-59-smoke-ui-html.html",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    },
+    {
+      "id": "statesnapshot_614fdd16-3571-4479-b40f-f1280ec5b5d5",
+      "kind": "ui",
+      "title": "smoke ui state",
+      "path": "docs/agent-state/2026-06-30T02-50-58-smoke-ui-state.json",
+      "schemaVersion": "code-agent-ui-state.v1",
+      "governanceSummary": {
+        "openApprovalCount": 2,
+        "openApprovalIds": [
+          "approval_20e3030e-9827-40bd-a9b2-115c6689b383",
+          "approval_45ae0c25-b530-4b87-8422-9212ce8d803b"
+        ],
+        "latestWorkflowStatus": "pending_approval",
+        "latestWorkflowReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ],
+        "governanceHoldActive": true,
+        "approvalPendingActive": true,
+        "goalBlockedActive": false,
+        "blockedGoalId": null,
+        "blockedGoalObjective": null,
+        "blockedGoalTurnCount": 0,
+        "blockedGoalBlockCount": 0,
+        "blockedGoalLastBlockerCode": null,
+        "blockedGoalLastBlockerMessage": null,
+        "recoverySuggestions": [
+          "approvals list",
+          "approval-artifacts list",
+          "workflow list",
+          "workflow-artifacts list",
+          "machine-state show"
+        ]
+      },
+      "latestWorkflow": {
+        "id": "workflow_b53e631b-6375-42d7-a4b5-7b1929fd6228",
+        "status": "pending_approval",
+        "statusReasonCodes": [
+          "governance_hold",
+          "approval_pending",
+          "review_plan_needs_attention",
+          "review_repo_needs_attention",
+          "review_code_needs_attention"
+        ]
+      }
+    }
+  ]
+}

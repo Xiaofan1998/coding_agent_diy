@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SKILL_PATH="${PLUGIN_ROOT}/skills/builtin/using-skills/SKILL.md"
+
+skill_content="$(cat "${SKILL_PATH}" 2>/dev/null || echo "Error reading ${SKILL_PATH}")"
+
+escape_for_json() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+skill_content_escaped="$(escape_for_json "$skill_content")"
+session_context="<IMPORTANT>\nThis coding-agent plugin ships a built-in skill bootstrap.\n\nBelow is the full content of 'using-skills' and it should be applied before deep exploration when a reusable workflow may help:\n\n${skill_content_escaped}\n</IMPORTANT>"
+
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"

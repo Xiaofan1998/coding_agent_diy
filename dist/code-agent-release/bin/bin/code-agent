@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUNDLED_NODE="/Users/zyb/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+
+if command -v node >/dev/null 2>&1; then
+  NODE_BIN="$(command -v node)"
+elif [ -x "$BUNDLED_NODE" ]; then
+  NODE_BIN="$BUNDLED_NODE"
+else
+  echo "Node.js not found. Install Node 20+ or update bin/code-agent." >&2
+  exit 1
+fi
+
+exec "$NODE_BIN" "$ROOT_DIR/apps/cli/index.js" "$@"

@@ -1,0 +1,20 @@
+{
+  "name": "code-agent-0617",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A terminal-first coding agent inspired by Codex workflows.",
+  "scripts": {
+    "start": "node ./apps/cli/index.js",
+    "chat": "node ./apps/cli/index.js chat",
+    "run": "node ./apps/cli/index.js run",
+    "demo": "node ./apps/demo/server.js",
+    "package:codex-plugin": "bash ./scripts/package-codex-plugin.sh",
+    "package:release": "bash ./scripts/package-release.sh",
+    "check": "node ./scripts/check.js",
+    "smoke": "node ./scripts/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

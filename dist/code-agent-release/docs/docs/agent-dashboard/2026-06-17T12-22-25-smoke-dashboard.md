@@ -1,0 +1,51 @@
+# smoke dashboard
+
+- Generated at: 2026-06-17T12:22:25.922Z
+- Active goal: smoke test goal
+
+## Summary
+- Plan progress: 0/1
+- Reviews: 13
+- Open approvals: 2
+- Governance summary: openApprovals=2 hold=yes approvalPending=yes latestWorkflowStatus=pending_approval reasonCodes=governance_hold,approval_pending,review_plan_needs_attention,review_repo_needs_attention,review_code_needs_attention
+- Workflows: 2
+- Workflow artifacts: 1
+- Traces: 52
+- Trace artifacts: 3
+- Latest workflow: workflow_d42b04bb-abd7-4806-88ff-c03f9da5b06f (pending_approval)
+- Latest workflow reason codes: governance_hold, approval_pending, review_plan_needs_attention, review_repo_needs_attention, review_code_needs_attention
+- Missing artifacts: dashboardArtifact
+
+## Recent Records
+- Plan artifacts: docs/agent-plans/2026-06-17T12-22-21-governance-hold-workflow.md, docs/agent-plans/2026-06-17T12-22-19-smoke-workflow.md, docs/agent-plans/2026-06-17T12-22-15-smoke-test-plan.md
+- Review artifacts: docs/agent-reviews/2026-06-17T12-22-22-code-review.md, docs/agent-reviews/2026-06-17T12-22-22-repo-review.md, docs/agent-reviews/2026-06-17T12-22-21-plan-review.md
+- Approval requests: approval_002692cd-f0f4-4574-a29d-6c5845b3f02f (pending) patch README.md: "Coding Agent" -> "Coding Agent Updated", approval_cfa1de2d-4f4d-4698-83e5-7f08a6ec5c94 (pending) write tmp/policy-write.txt with 2 line(s) and 10 character(s), approval_b2b17e6f-9143-4a41-91dc-a11fd8377535 (approved) run shell command "echo hello"
+- Approval artifacts: docs/agent-approvals/2026-06-17T12-22-24-smoke-approval-artifact.md, docs/agent-approvals/2026-06-17T12-22-22-governance-approval-artifact.md
+- Dashboard artifacts: (none)
+- Bundle-index artifacts: docs/agent-bundles/2026-06-17T12-22-25-smoke-bundle-index.md
+- Workflow artifacts: docs/agent-workflows/2026-06-17T12-22-23-governance-hold-workflow.md
+- Trace kinds: approval_requested, approval_requested, approval_override_used, approval_retry_executed, approval_override_used
+- Suggested first tools: list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, list_workflow_bundles
+- Suggested next reads: approvalArtifact:approvalartifact_b0032fc6-5b86-4af6-9615-4186c27dd3a2, approvalRequest:approval_002692cd-f0f4-4574-a29d-6c5845b3f02f, workflowArtifact:workflowartifact_83c4b81f-94af-4802-b761-0998b9c1abea, bundleIndexArtifact:bundleartifact_2743bd31-5f4b-441e-8062-d86d1dfd612d, approvalArtifact:approvalartifact_b0032fc6-5b86-4af6-9615-4186c27dd3a2, workflowRun:workflow_d42b04bb-abd7-4806-88ff-c03f9da5b06f, planArtifact:planartifact_bf5794dc-be8e-476e-ae67-00ca1b7a690a, reviewArtifact:reviewartifact_8d2110df-4045-4929-9e0e-12d25d479c6a, traceArtifact:traceartifact_ca2576fc-71e8-4b2f-8467-9c699eb66ca4
+
+## Linked Summaries
+- Latest workflow bundle: workflow_d42b04bb-abd7-4806-88ff-c03f9da5b06f (pending_approval)
+- Recent dashboard artifact ids: (none)
+- Recent dashboard artifact paths: (none)
+- Recent bundle-index artifact ids: bundleartifact_2743bd31-5f4b-441e-8062-d86d1dfd612d
+- Recent bundle-index artifact paths: docs/agent-bundles/2026-06-17T12-22-25-smoke-bundle-index.md
+- Recent plan artifact ids: planartifact_bf5794dc-be8e-476e-ae67-00ca1b7a690a, planartifact_c441f886-1c86-4db9-8fdb-fa760ff37680, planartifact_2d0ff034-c2b0-4645-a12e-f9f21b33c3a9
+- Recent review artifact ids: reviewartifact_8d2110df-4045-4929-9e0e-12d25d479c6a, reviewartifact_7c18b510-95df-4d25-b21d-ab193cf9052f, reviewartifact_5be2be8f-a9e4-4bd8-9c88-590b9eb53ada
+- Recent workflow artifact ids: workflowartifact_83c4b81f-94af-4802-b761-0998b9c1abea
+- Recent workflow artifact paths: docs/agent-workflows/2026-06-17T12-22-23-governance-hold-workflow.md
+- Recent approval artifact ids: approvalartifact_b0032fc6-5b86-4af6-9615-4186c27dd3a2, approvalartifact_b2ec4ed8-3021-4b08-b3b1-e5faa72cfe72
+- Recent approval artifact paths: docs/agent-approvals/2026-06-17T12-22-24-smoke-approval-artifact.md, docs/agent-approvals/2026-06-17T12-22-22-governance-approval-artifact.md
+- Recent dashboard artifact paths: (none)
+- Recent bundle-index artifact paths: docs/agent-bundles/2026-06-17T12-22-25-smoke-bundle-index.md
+- Recent approval summaries: approval_002692cd-f0f4-4574-a29d-6c5845b3f02f (pending) patch README.md: "Coding Agent" -> "Coding Agent Updated", approval_cfa1de2d-4f4d-4698-83e5-7f08a6ec5c94 (pending) write tmp/policy-write.txt with 2 line(s) and 10 character(s), approval_b2b17e6f-9143-4a41-91dc-a11fd8377535 (approved) run shell command "echo hello"
+- Recent trace artifact ids: traceartifact_ca2576fc-71e8-4b2f-8467-9c699eb66ca4, traceartifact_89973adb-6f25-4aa6-b1e2-d3bfe87f729f, traceartifact_c937dd35-3e70-4e0c-ab98-e33d9c653572
+- Recent trace artifact paths: docs/agent-traces/2026-06-17T12-22-23-smoke-traces.md, docs/agent-traces/2026-06-17T12-22-22-governance-hold-workflow-traces.md, docs/agent-traces/2026-06-17T12-22-19-smoke-workflow-traces.md
+
+## Notes
+- This file was generated by the coding-agent dashboard artifact exporter.
+- Export a fresh dashboard artifact when you need a point-in-time project state snapshot.

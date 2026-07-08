@@ -1,0 +1,323 @@
+{
+  "schemaVersion": "code-agent-state.v1",
+  "generatedAt": "2026-06-18T02:35:44.654Z",
+  "projectRoot": "/Users/zyb/Downloads/xfbo_homework/code/code-agent-0617",
+  "session": {
+    "summary": "## Working Memory\nActive goal: smoke test goal\nPlan progress: 0/1 completed, 0 in_progress, 1 blocked; next: governance hold item\nRelevant files: dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-44-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-45-45-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-48-11-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-50-15-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-55-13-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-58-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-02-03-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-04-21-governance-approval-artifact.md\nActivated skills: using-skills, writing-plans, subagent-driven-development\n\n### Recent user requests\n- Subagent objective: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 5/5 completed, 0 in_progress, 0 blocked; next: (none)... [truncated]\n- Subagent objective: direct governed subagent Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 0 blocked; next: go... [truncated]\n- Subagent objective: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 1 blocked; next: govern... [truncated]\n\n### Recent assistant actions\n- Scoped subagent summary for: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 5/5 completed, 0 in_progress, 0 blocked; nex... [truncated]\n- Scoped subagent summary for: direct governed subagent Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 0 blocked;... [truncated]\n- Scoped subagent summary for: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 1 blocked; nex... [truncated]",
+    "turnCount": 10
+  },
+  "governance": {
+    "openApprovalCount": 2,
+    "openApprovalIds": [
+      "approval_690713f6-aff0-48c4-8e65-2ead004cc86d",
+      "approval_f6317e09-084c-4baf-a9f3-6d6f25ea93ee"
+    ],
+    "latestWorkflowStatus": "pending_approval",
+    "latestWorkflowReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ],
+    "governanceHoldActive": true,
+    "approvalPendingActive": true,
+    "goalBlockedActive": false,
+    "blockedGoalId": null,
+    "blockedGoalObjective": null,
+    "blockedGoalTurnCount": 0,
+    "blockedGoalBlockCount": 0,
+    "blockedGoalLastBlockerCode": null,
+    "blockedGoalLastBlockerMessage": null,
+    "recoverySuggestions": [
+      "approvals list",
+      "approval-artifacts list",
+      "workflow list",
+      "workflow-artifacts list",
+      "machine-state show"
+    ]
+  },
+  "toolPolicy": {
+    "strategyMode": "balanced",
+    "maxToolRisk": "caution",
+    "subagentMaxToolRisk": "caution",
+    "requireConfirmationForWrite": false,
+    "requireConfirmationForRestricted": true
+  },
+  "goal": {
+    "id": "goal_1781750107665",
+    "objective": "smoke test goal",
+    "status": "active",
+    "createdAt": "2026-06-18T02:35:07.663Z",
+    "updatedAt": "2026-06-18T02:35:37.340Z",
+    "turnCount": 2,
+    "blockCount": 1,
+    "completionCriteria": null,
+    "lastBlockerCode": "approval_pending",
+    "lastBlockerMessage": "Pending approvals are blocking progress: approval_74c4d552-4b32-4f0b-bf5e-4da7b1d0de81."
+  },
+  "plan": {
+    "total": 1,
+    "completed": 0,
+    "linkedSubagentCount": 1,
+    "pendingSubagentReviewCount": 1,
+    "currentPlanSummary": {
+      "planItemCount": 1,
+      "completedPlanItemCount": 0,
+      "pendingSubagentReviewCount": 1,
+      "latestPlanRunId": "planrun_1781750138827",
+      "latestPlanRunMode": "sequential",
+      "latestPlanRunCreatedAt": "2026-06-18T02:35:38.827Z",
+      "items": [
+        {
+          "index": 1,
+          "content": "governance hold item",
+          "status": "blocked",
+          "latestExecutionStatus": "blocked",
+          "latestExecutionSummary": "Scoped subagent summary for: governance hold item\n\nActive goal: smoke test goal\n\nSession summary: ## Working Memory\nActive goal: smoke test goal\nPlan progress: 0/1 completed, 0 in_progress, 1 blocked; next: governance hold item\nRelevant files: dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-20-57-smoke-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-44-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-45-45-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-48-11-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-50-15-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-55-13-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-58-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-02-03-governance-approval-artifact.md\nActivated skills: writing-plans, using-skills, subagent-driven-development\n\n### Recent user requests\n- status\n- Subagent objective: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 5/5 completed, 0 in_progress, 0 blocked; next: (none)... [truncated]\n- Subagent objective: direct governed subagent Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 0 blocked; next: go... [truncated]\n\n### Recent assistant actions\n- **Dashboard** - Active goal: smoke test goal - Plan progress: 5/5 - Reviews: 8 - Open approvals: 1 - Workflows: 1 - Workflow artifacts: 0 - Traces: 22 - Trace artifacts: 1 - Linked subagents: 0 - Pendin... [truncated]\n- Scoped subagent summary for: governance hold item Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 5/5 completed, 0 in_progress, 0 blocked; nex... [truncated]\n- Scoped subagent summary for: direct governed subagent Active goal: smoke test goal Session summary: ## Working Memory Active goal: smoke test goal Plan progress: 0/1 completed, 0 in_progress, 0 blocked;... [truncated]\n\nAllowed tools: list_files, read_file, search_files, git_diff, git_status\n\nPlan items: 0/1 completed, 0 in_progress, 1 blocked; next: governance hold item\n\nRelevant files: dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-44-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-45-45-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-48-11-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-50-15-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-55-13-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-58-50-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-02-03-governance-approval-artifact.md, dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-04-21-governance-approval-artifact.md\n\nAdditional context:\nGovernance hold is active for direct subagent execution because pending approvals exist (approval_74c4d552-4b32-4f0b-bf5e-4da7b1d0de81). Limit work to read-only inspection and blocked-task reporting.\n\nGovernance hold is active because pending approval requests exist (approval_74c4d552-4b32-4f0b-bf5e-4da7b1d0de81). Do not modify files. Inspect the task, gather evidence, and report what remains blocked pending approval resolution.\n\nRelevant repo context:\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-44-50-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_d72a61fd-f51e-4706-841b-a6b5a282c297\n### trace_742809e6-4907-43f9-a622-1fe25bcb04f7\n## Timeline\n## Notes\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-45-45-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781689543502_subagent_spawned\n### trace_1781689543117_subagent_hold\n### trace_1781689542742\n### trace_1781689540730_subagent_spawned\n### trace_1781689540324_subagent_hold\n### trace_1781689539302_subagent_spawned\n### trace_1781689538891_subagent_hold\n### trace_1781689538478\n### trace_e8399d88-26fc-4fae-985a-47f89773196c\n### trace_16817a03-d847-41a3-97cb-8cca26552c67\n### trace_1781689520476_subagent_spawned\n### trace_1781689519864_subagent_spawned\n### trace_1781689519178_subagent_spawned\n### trace_1781689518434_subagent_spawned\n## Timeline\n## Notes\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-48-11-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781689689673_subagent_spawned\n### trace_1781689689364_subagent_hold\n### trace_1781689689086\n### trace_1781689687896_subagent_spawned\n### trace_1781689687529_subagent_hold\n### trace_1781689686398_subagent_spawned\n### trace_1781689686085_subagent_hold\n### trace_1781689685792\n### trace_50f11b00-18a7-4d88-949c-2a76d8a6bd96\n### trace_51c424c5-f001-4174-83a9-9e0db6124f9a\n### trace_1781689670141_subagent_spawned\n### trace_1781689669293_subagent_spawned\n### trace_1781689668440_subagent_spawned\n### trace_1781689667477_subagent_spawned\n## Timeline\n### subagent_spawn\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-50-15-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781689814018_subagent_spawned\n### trace_1781689813682_subagent_hold\n### trace_1781689813415\n### trace_1781689812192_subagent_spawned\n### trace_1781689811868_subagent_hold\n### trace_1781689810972_subagent_spawned\n### trace_1781689810623_subagent_hold\n### trace_1781689810325\n### trace_6ad3b17f-306e-4b0f-8b99-229a821d204f\n### trace_ae52c03e-52bc-4f18-bfb1-ba51103df63d\n### trace_1781689793499_subagent_spawned\n### trace_1781689792828_subagent_spawned\n### trace_1781689792105_subagent_spawned\n### trace_1781689791444_subagent_spawned\n## Timeline\n### subagent_spawn\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-55-13-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781690112226_subagent_spawned\n### trace_1781690111889_subagent_hold\n### trace_1781690111559\n### trace_1781690109769_subagent_spawned\n### trace_1781690109485_subagent_hold\n### trace_1781690108643_subagent_spawned\n### trace_1781690108199_subagent_hold\n### trace_1781690107777\n### trace_3054eb2b-05fe-49c6-9a17-a58d247dd42c\n### trace_53d10d5e-ba42-4ed6-a299-261da3eb78dd\n### trace_1781690091812_subagent_spawned\n### trace_1781690091129_subagent_spawned\n### trace_1781690090501_subagent_spawned\n### trace_1781690089951_subagent_spawned\n## Timeline\n### subagent_spawn\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T09-58-50-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781690323087_subagent_spawned\n### trace_1781690321508_subagent_hold\n### trace_1781690320858\n### trace_1781690317575_subagent_spawned\n### trace_1781690316790_subagent_hold\n### trace_1781690314536_subagent_spawned\n### trace_1781690313845_subagent_hold\n### trace_1781690313210\n### trace_48116871-98e8-44a8-a5be-5c66fbbb133c\n### trace_84d44df1-dd32-4b45-a794-962fc66af5cc\n### trace_1781690269472_subagent_spawned\n### trace_1781690268561_subagent_spawned\n### trace_1781690267588_subagent_spawned\n### trace_1781690266406_subagent_spawned\n## Timeline\n### subagent_spawn\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-02-03-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781690520487_subagent_spawned\n### trace_1781690520061_subagent_hold\n### trace_1781690519603\n### trace_1781690517222_subagent_spawned\n### trace_1781690516695_subagent_hold\n### trace_1781690515470_subagent_spawned\n### trace_1781690514950_subagent_hold\n### trace_1781690514477\n### trace_0aa6dfd0-1e0c-4adf-a489-69a1c0964459\n### trace_5a0bff36-32cd-4b08-9338-8cb233e8e607\n### trace_1781690487393_subagent_spawned\n### trace_1781690486337_subagent_spawned\n### trace_1781690485481_subagent_spawned\n### trace_1781690484648_subagent_spawned\n## Timeline\n### subagent_spawn\n\n### dist/code-agent-release/docs/docs/agent-approvals/2026-06-17T10-04-21-governance-approval-artifact.md (score 4)\n# governance approval artifact\n## Approval Details\n## Workflow Context\n## Related Traces\n### trace_1781690659573_subagent_spawned\n### trace_1781690659264_subagent_hold\n### trace_1781690659014\n### trace_1781690657243_subagent_spawned\n### trace_1781690656878_subagent_hold\n### trace_1781690656131_subagent_spawned\n### trace_1781690655766_subagent_hold\n### trace_1781690655483\n### trace_ebb8de8e-f90b-470c-982f-28a62b641615\n### trace_73cbca81-41bd-460a-989a-32f5781a50be\n### trace_1781690641914_subagent_spawned\n### trace_1781690641185_subagent_spawned\n### trace_1781690640381_subagent_spawned\n### trace_1781690639558_subagent_spawned\n## Timeline\n### subagent_spawn\n\nWorking rules:\n\n- Stay within the subagent objective.\n\n- Use the provided context before broad exploration.\n\n- Return a concise summary, findings, and any concrete edits or verification notes.\n\nVerification failed: Unknown tool: run_shell",
+          "latestSubagentRecordId": "subagent_1781750138764",
+          "latestSubagentReviewStatus": null
+        }
+      ]
+    }
+  },
+  "counts": {
+    "reviews": 13,
+    "approvalRequests": 5,
+    "approvalArtifacts": 2,
+    "workflows": 2,
+    "workflowArtifacts": 1,
+    "traces": 48,
+    "traceArtifacts": 3
+  },
+  "latestWorkflow": {
+    "id": "workflow_7b5266cd-7138-4afd-af9f-1bc019fc77e5",
+    "status": "pending_approval",
+    "statusReasons": [
+      {
+        "code": "governance_hold",
+        "category": "governance",
+        "message": "Plan execution is in governance hold because pending approvals exist: approval_74c4d552-4b32-4f0b-bf5e-4da7b1d0de81."
+      },
+      {
+        "code": "approval_pending",
+        "category": "approval",
+        "message": "1 approval request(s) are still required before the workflow can be treated as complete."
+      },
+      {
+        "code": "review_plan_needs_attention",
+        "category": "review",
+        "reviewKind": "plan",
+        "message": "plan review is needs_attention: Plan review found 2 blocking issue(s)."
+      },
+      {
+        "code": "review_repo_needs_attention",
+        "category": "review",
+        "reviewKind": "repo",
+        "message": "repo review is needs_attention: Repo review found 2 blocking issue(s)."
+      },
+      {
+        "code": "review_code_needs_attention",
+        "category": "review",
+        "reviewKind": "code",
+        "message": "code review is needs_attention: Code review found 1 blocking issue(s)."
+      }
+    ],
+    "statusReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ],
+    "reviewCount": 3,
+    "traceCount": 5
+  },
+  "recent": {
+    "planArtifacts": [
+      {
+        "id": "planartifact_e216a640-5ef4-4942-8b14-467cfb06ca04",
+        "path": "docs/agent-plans/2026-06-18T02-35-38-governance-hold-workflow.md"
+      },
+      {
+        "id": "planartifact_15473e03-cb94-4a0e-bb18-697c5f92ccf3",
+        "path": "docs/agent-plans/2026-06-18T02-35-36-smoke-workflow.md"
+      },
+      {
+        "id": "planartifact_5f80bf7c-e23c-4018-b9eb-80adbba26e08",
+        "path": "docs/agent-plans/2026-06-18T02-35-15-smoke-test-plan.md"
+      }
+    ],
+    "reviewArtifacts": [
+      {
+        "id": "reviewartifact_e7039731-8213-44e4-98df-048240174e07",
+        "kind": "code",
+        "path": "docs/agent-reviews/2026-06-18T02-35-38-code-review.md"
+      },
+      {
+        "id": "reviewartifact_fcd72ae1-11f1-4be1-b1b8-5c0a79afac41",
+        "kind": "repo",
+        "path": "docs/agent-reviews/2026-06-18T02-35-38-repo-review.md"
+      },
+      {
+        "id": "reviewartifact_9ca3021d-5017-4134-bbfe-a835f2ad09ec",
+        "kind": "plan",
+        "path": "docs/agent-reviews/2026-06-18T02-35-38-plan-review.md"
+      }
+    ],
+    "approvalRequests": [
+      {
+        "id": "approval_690713f6-aff0-48c4-8e65-2ead004cc86d",
+        "status": "pending",
+        "kind": "tool_policy_gate",
+        "title": "Policy gate for tool apply_patch",
+        "changeSummary": "patch README.md: \"Coding Agent\" -> \"Coding Agent Updated\""
+      },
+      {
+        "id": "approval_f6317e09-084c-4baf-a9f3-6d6f25ea93ee",
+        "status": "pending",
+        "kind": "tool_policy_gate",
+        "title": "Policy gate for tool write_file",
+        "changeSummary": "write tmp/policy-write.txt with 2 line(s) and 10 character(s)"
+      },
+      {
+        "id": "approval_d94f0aba-e2c1-4d13-a080-476cad63cdf7",
+        "status": "approved",
+        "kind": "tool_policy_gate",
+        "title": "Policy gate for tool run_shell",
+        "changeSummary": "run shell command \"echo hello\""
+      }
+    ],
+    "approvalArtifacts": [
+      {
+        "id": "approvalartifact_1b90ef4c-71a8-4519-8c40-3304634f15b8",
+        "path": "docs/agent-approvals/2026-06-18T02-35-41-smoke-approval-artifact.md",
+        "title": "smoke approval artifact",
+        "approvalId": "approval_d94f0aba-e2c1-4d13-a080-476cad63cdf7"
+      },
+      {
+        "id": "approvalartifact_4cb3af10-6d71-4bf3-a522-7300bee3591b",
+        "path": "docs/agent-approvals/2026-06-18T02-35-39-governance-approval-artifact.md",
+        "title": "governance approval artifact",
+        "approvalId": "approval_74c4d552-4b32-4f0b-bf5e-4da7b1d0de81"
+      }
+    ],
+    "workflowArtifacts": [
+      {
+        "id": "workflowartifact_c6d9476e-dd2f-43b9-9a23-17f817261da1",
+        "path": "docs/agent-workflows/2026-06-18T02-35-40-governance-hold-workflow.md",
+        "status": "pending_approval"
+      }
+    ],
+    "traceArtifacts": [
+      {
+        "id": "traceartifact_3a48962b-c07e-435d-a236-9f104f31cb87",
+        "path": "docs/agent-traces/2026-06-18T02-35-40-smoke-traces.md",
+        "traceCount": 20
+      },
+      {
+        "id": "traceartifact_72ee7e6b-f372-4c24-8ac6-acfdf43cdd45",
+        "path": "docs/agent-traces/2026-06-18T02-35-39-governance-hold-workflow-traces.md",
+        "traceCount": 5
+      },
+      {
+        "id": "traceartifact_2f5979d0-fb0d-4f73-8199-d633a00d612a",
+        "path": "docs/agent-traces/2026-06-18T02-35-36-smoke-workflow-traces.md",
+        "traceCount": 4
+      }
+    ]
+  },
+  "recommendations": {
+    "suggestedFirstTools": [
+      "list_approval_requests",
+      "read_approval_request",
+      "read_approval_artifact",
+      "get_dashboard_summary",
+      "get_plan_summary"
+    ],
+    "suggestedNextReads": [
+      {
+        "kind": "approvalArtifact",
+        "id": "approvalartifact_1b90ef4c-71a8-4519-8c40-3304634f15b8"
+      },
+      {
+        "kind": "approvalRequest",
+        "id": "approval_690713f6-aff0-48c4-8e65-2ead004cc86d"
+      },
+      {
+        "kind": "workflowArtifact",
+        "id": "workflowartifact_c6d9476e-dd2f-43b9-9a23-17f817261da1"
+      },
+      {
+        "kind": "dashboardArtifact",
+        "id": "dashboardartifact_bfb8cd39-b24b-4c02-bc4b-ffbd9fd915cf"
+      },
+      {
+        "kind": "bundleIndexArtifact",
+        "id": "bundleartifact_7e4d8f7b-99d5-4b20-9bab-c17f77ea1602"
+      },
+      {
+        "kind": "approvalArtifact",
+        "id": "approvalartifact_1b90ef4c-71a8-4519-8c40-3304634f15b8"
+      },
+      {
+        "kind": "workflowRun",
+        "id": "workflow_7b5266cd-7138-4afd-af9f-1bc019fc77e5"
+      },
+      {
+        "kind": "planArtifact",
+        "id": "planartifact_e216a640-5ef4-4942-8b14-467cfb06ca04"
+      },
+      {
+        "kind": "reviewArtifact",
+        "id": "reviewartifact_e7039731-8213-44e4-98df-048240174e07"
+      },
+      {
+        "kind": "traceArtifact",
+        "id": "traceartifact_3a48962b-c07e-435d-a236-9f104f31cb87"
+      }
+    ],
+    "suggestedNextReadLabels": [
+      "approvalArtifact:approvalartifact_1b90ef4c-71a8-4519-8c40-3304634f15b8",
+      "approvalRequest:approval_690713f6-aff0-48c4-8e65-2ead004cc86d",
+      "workflowArtifact:workflowartifact_c6d9476e-dd2f-43b9-9a23-17f817261da1",
+      "dashboardArtifact:dashboardartifact_bfb8cd39-b24b-4c02-bc4b-ffbd9fd915cf",
+      "bundleIndexArtifact:bundleartifact_7e4d8f7b-99d5-4b20-9bab-c17f77ea1602",
+      "approvalArtifact:approvalartifact_1b90ef4c-71a8-4519-8c40-3304634f15b8",
+      "workflowRun:workflow_7b5266cd-7138-4afd-af9f-1bc019fc77e5",
+      "planArtifact:planartifact_e216a640-5ef4-4942-8b14-467cfb06ca04",
+      "reviewArtifact:reviewartifact_e7039731-8213-44e4-98df-048240174e07",
+      "traceArtifact:traceartifact_3a48962b-c07e-435d-a236-9f104f31cb87"
+    ],
+    "recommendedActions": [
+      {
+        "kind": "approval",
+        "label": "Resolve approvals",
+        "detail": "approval_690713f6-aff0-48c4-8e65-2ead004cc86d, approval_f6317e09-084c-4baf-a9f3-6d6f25ea93ee",
+        "command": "approvals list"
+      },
+      {
+        "kind": "subagent",
+        "label": "Review subagent outputs",
+        "detail": "1 pending review",
+        "command": "subagents summary"
+      },
+      {
+        "kind": "plan",
+        "label": "Focus plan item 1",
+        "detail": "governance hold item",
+        "command": "plan summary"
+      },
+      {
+        "kind": "workflow",
+        "label": "Inspect workflow hold",
+        "detail": "workflow_7b5266cd-7138-4afd-af9f-1bc019fc77e5",
+        "command": "workflow list"
+      }
+    ]
+  },
+  "artifactCoverage": {
+    "missing": [],
+    "complete": true
+  }
+}

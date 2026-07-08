@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>smoke ui html</title>
+  <style>
+    :root { --bg:#f3efe4; --ink:#1d252b; --muted:#5d6972; --card:#fffaf2; --line:#d7cbb0; --accent:#b04d28; --accent2:#2f6762; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Palatino Linotype", serif;
+      background:
+        radial-gradient(circle at top left, rgba(176,77,40,0.14), transparent 26rem),
+        radial-gradient(circle at bottom right, rgba(47,103,98,0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+    }
+    main { max-width: 1100px; margin: 0 auto; padding: 28px 18px 50px; }
+    .hero { border: 1px solid var(--line); background: rgba(255,250,242,0.96); padding: 22px; margin-bottom: 18px; }
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin-bottom: 8px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1.03; }
+    .sub { color: var(--muted); margin-bottom: 14px; }
+    .badge { display: inline-block; border: 1px solid var(--ink); padding: 6px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .grid, .sections { display: grid; gap: 14px; }
+    .grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 22px; }
+    .sections { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: 22px; }
+    .card, .panel { border: 1px solid var(--line); background: var(--card); padding: 16px; }
+    .card-title { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin-bottom: 10px; }
+    .card-value { font-size: 30px; color: var(--accent); margin-bottom: 8px; }
+    .card-detail, .panel ul { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .panel h2 { margin: 0 0 10px; font-size: 18px; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div class="eyebrow">code-agent-ui-state.v1</div>
+      <h1>smoke test goal</h1>
+      <div class="sub">Workflow: pending_approval</div>
+      <div class="badge">governance-hold</div>
+    </section>
+    <section class="grid"><article class="card"><div class="card-title">Plan</div><div class="card-value">0/1</div><div class="card-detail">completed</div></article>
+<article class="card"><div class="card-title">Open Approvals</div><div class="card-value">2</div><div class="card-detail">approval_af4a38e6-54ee-4344-919a-7a53d9735264, approval_2a93377f-6508-48c3-a566-5bf03fffaaae</div></article>
+<article class="card"><div class="card-title">Latest Workflow</div><div class="card-value">workflow_c20b57f9-2685-459e-9a0b-06449253a4f2</div><div class="card-detail">pending_approval</div></article>
+<article class="card"><div class="card-title">Suggested First Tools</div><div class="card-value">5</div><div class="card-detail">list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, list_workflow_bundles</div></article></section>
+    <section class="sections"><section class="panel"><h2>Overview</h2><ul><li>Plan: 0/1 (completed)</li><li>Latest Workflow: workflow_c20b57f9-2685-459e-9a0b-06449253a4f2 (pending_approval)</li></ul></section>
+<section class="panel"><h2>Governance</h2><ul><li>Open Approvals: 2 (approval_af4a38e6-54ee-4344-919a-7a53d9735264, approval_2a93377f-6508-48c3-a566-5bf03fffaaae)</li><li>Reason codes: governance_hold, approval_pending, review_plan_needs_attention, review_repo_needs_attention, review_code_needs_attention</li></ul></section>
+<section class="panel"><h2>Recommendations</h2><ul><li>Suggested First Tools: 5 (list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, list_workflow_bundles)</li><li>Next reads: approvalArtifact:approvalartifact_01125038-68b5-4ac0-baf4-4ca33004b22d, approvalRequest:approval_af4a38e6-54ee-4344-919a-7a53d9735264, workflowArtifact:workflowartifact_2c0c60b2-f8da-4375-8b9d-2a9572832d8b, dashboardArtifact:dashboardartifact_000ef7c8-a385-42e0-b2fa-beefe56c6c65, bundleIndexArtifact:bundleartifact_9cbff2ad-a712-49c7-8d65-8d13308efbb8, approvalArtifact:approvalartifact_01125038-68b5-4ac0-baf4-4ca33004b22d, workflowRun:workflow_c20b57f9-2685-459e-9a0b-06449253a4f2, planArtifact:planartifact_ad49365e-e8c7-4381-8091-1249522c480d, reviewArtifact:reviewartifact_bfc71ea6-63be-443e-ab48-006c009e0709, traceArtifact:traceartifact_bdfa5c80-a6fd-4a15-83c0-ce70591de8bc</li></ul></section></section>
+    <section class="panel"><h2>Governance</h2><pre>{
+  &quot;openApprovalCount&quot;: 2,
+  &quot;openApprovalIds&quot;: [
+    &quot;approval_af4a38e6-54ee-4344-919a-7a53d9735264&quot;,
+    &quot;approval_2a93377f-6508-48c3-a566-5bf03fffaaae&quot;
+  ],
+  &quot;latestWorkflowStatus&quot;: &quot;pending_approval&quot;,
+  &quot;latestWorkflowReasonCodes&quot;: [
+    &quot;governance_hold&quot;,
+    &quot;approval_pending&quot;,
+    &quot;review_plan_needs_attention&quot;,
+    &quot;review_repo_needs_attention&quot;,
+    &quot;review_code_needs_attention&quot;
+  ],
+  &quot;governanceHoldActive&quot;: true,
+  &quot;approvalPendingActive&quot;: true
+}</pre></section>
+    <section class="panel"><h2>Recommendations</h2><pre>{
+  &quot;suggestedFirstTools&quot;: [
+    &quot;list_approval_requests&quot;,
+    &quot;read_approval_request&quot;,
+    &quot;read_approval_artifact&quot;,
+    &quot;get_dashboard_summary&quot;,
+    &quot;list_workflow_bundles&quot;
+  ],
+  &quot;suggestedNextReadLabels&quot;: [
+    &quot;approvalArtifact:approvalartifact_01125038-68b5-4ac0-baf4-4ca33004b22d&quot;,
+    &quot;approvalRequest:approval_af4a38e6-54ee-4344-919a-7a53d9735264&quot;,
+    &quot;workflowArtifact:workflowartifact_2c0c60b2-f8da-4375-8b9d-2a9572832d8b&quot;,
+    &quot;dashboardArtifact:dashboardartifact_000ef7c8-a385-42e0-b2fa-beefe56c6c65&quot;,
+    &quot;bundleIndexArtifact:bundleartifact_9cbff2ad-a712-49c7-8d65-8d13308efbb8&quot;,
+    &quot;approvalArtifact:approvalartifact_01125038-68b5-4ac0-baf4-4ca33004b22d&quot;,
+    &quot;workflowRun:workflow_c20b57f9-2685-459e-9a0b-06449253a4f2&quot;,
+    &quot;planArtifact:planartifact_ad49365e-e8c7-4381-8091-1249522c480d&quot;,
+    &quot;reviewArtifact:reviewartifact_bfc71ea6-63be-443e-ab48-006c009e0709&quot;,
+    &quot;traceArtifact:traceartifact_bdfa5c80-a6fd-4a15-83c0-ce70591de8bc&quot;
+  ]
+}</pre></section>
+    <section class="panel"><h2>Latest Workflow</h2><pre>{
+  &quot;id&quot;: &quot;workflow_c20b57f9-2685-459e-9a0b-06449253a4f2&quot;,
+  &quot;status&quot;: &quot;pending_approval&quot;,
+  &quot;statusReasonCodes&quot;: [
+    &quot;governance_hold&quot;,
+    &quot;approval_pending&quot;,
+    &quot;review_plan_needs_attention&quot;,
+    &quot;review_repo_needs_attention&quot;,
+    &quot;review_code_needs_attention&quot;
+  ]
+}</pre></section>
+  </main>
+</body>
+</html>

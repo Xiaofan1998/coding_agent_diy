@@ -1,0 +1,28 @@
+{
+  "name": "code-agent",
+  "version": "0.1.0",
+  "description": "A terminal-first coding agent inspired by Codex workflows, with plans, governance, machine-state exports, and demo surfaces.",
+  "author": {
+    "name": "zyb"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks-codex.json",
+  "interface": {
+    "displayName": "Code Agent",
+    "shortDescription": "Planning, governance, state export, and demo workflows for coding tasks",
+    "longDescription": "Use Code Agent to plan, execute, review, govern, export machine-state snapshots, and inspect results through demo and audit surfaces.",
+    "developerName": "zyb",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Let's add a feature to this project.",
+      "Show me the current machine-state summary."
+    ],
+    "brandColor": "#B14D2C"
+  }
+}

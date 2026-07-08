@@ -1,0 +1,243 @@
+{
+  "schemaVersion": "code-agent-ui-state.v1",
+  "generatedAt": "2026-06-18T02:44:03.240Z",
+  "projectRoot": "/Users/zyb/Downloads/xfbo_homework/code/code-agent-0617",
+  "hero": {
+    "goal": "smoke test goal",
+    "workflowStatus": "pending_approval",
+    "governanceLabel": "governance-hold"
+  },
+  "cards": [
+    {
+      "id": "plan",
+      "title": "Plan",
+      "value": "0/1",
+      "detail": "completed"
+    },
+    {
+      "id": "approvals",
+      "title": "Open Approvals",
+      "value": "2",
+      "detail": "approval_f0c8ab4c-63fa-4e32-9155-ccd510252629, approval_519b4a0d-703e-44ba-92c4-eff67c5c6f22"
+    },
+    {
+      "id": "workflow",
+      "title": "Latest Workflow",
+      "value": "workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+      "detail": "pending_approval"
+    },
+    {
+      "id": "strategy",
+      "title": "Strategy Mode",
+      "value": "balanced",
+      "detail": "risk=caution"
+    },
+    {
+      "id": "recommendations",
+      "title": "Suggested First Tools",
+      "value": "5",
+      "detail": "list_approval_requests, read_approval_request, read_approval_artifact, get_dashboard_summary, get_plan_summary"
+    },
+    {
+      "id": "goal-status",
+      "title": "Goal Status",
+      "value": "active",
+      "detail": "Pending approvals are blocking progress: approval_bf4f5a87-e789-406d-8ea0-fed98202de5a."
+    },
+    {
+      "id": "goal-recovery",
+      "title": "Goal Recovery",
+      "value": "5",
+      "detail": "approvals list, approval-artifacts list, workflow list, workflow-artifacts list, machine-state show"
+    },
+    {
+      "id": "linked-subagents",
+      "title": "Linked Subagents",
+      "value": "1",
+      "detail": "1 pending review"
+    },
+    {
+      "id": "plan-summary",
+      "title": "Plan Summary",
+      "value": "planrun_1781750638520",
+      "detail": "0/1 items"
+    }
+  ],
+  "sections": [
+    {
+      "id": "overview",
+      "title": "Overview",
+      "cardIds": [
+        "plan",
+        "workflow",
+        "linked-subagents",
+        "strategy"
+      ]
+    },
+    {
+      "id": "governance",
+      "title": "Governance",
+      "cardIds": [
+        "approvals",
+        "goal-status"
+      ],
+      "reasonCodes": [
+        "governance_hold",
+        "approval_pending",
+        "review_plan_needs_attention",
+        "review_repo_needs_attention",
+        "review_code_needs_attention"
+      ]
+    },
+    {
+      "id": "recommendations",
+      "title": "Recommendations",
+      "cardIds": [
+        "recommendations",
+        "goal-recovery"
+      ],
+      "nextReadLabels": [
+        "approvalArtifact:approvalartifact_6b13bb15-c7c6-4b28-85bc-4c9703d9c94d",
+        "approvalRequest:approval_f0c8ab4c-63fa-4e32-9155-ccd510252629",
+        "workflowArtifact:workflowartifact_67074bd5-2871-4638-9e9a-c42603e5a78a",
+        "dashboardArtifact:dashboardartifact_e515e177-564d-40ac-885d-550a00fbb46a",
+        "bundleIndexArtifact:bundleartifact_5245d3d1-2eb2-4d4a-84a3-963ce956d5e8",
+        "approvalArtifact:approvalartifact_6b13bb15-c7c6-4b28-85bc-4c9703d9c94d",
+        "workflowRun:workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+        "planArtifact:planartifact_8bbee31d-1057-486b-bafc-2156b976a87c",
+        "reviewArtifact:reviewartifact_c1d55ba2-7f0a-42b1-8ff3-f094ee57792a",
+        "traceArtifact:traceartifact_d2f4a75a-ee98-4a80-ae75-f7ae379944d8"
+      ],
+      "recommendedActions": [
+        {
+          "kind": "approval",
+          "label": "Resolve approvals",
+          "detail": "approval_f0c8ab4c-63fa-4e32-9155-ccd510252629, approval_519b4a0d-703e-44ba-92c4-eff67c5c6f22",
+          "command": "approvals list"
+        },
+        {
+          "kind": "subagent",
+          "label": "Review subagent outputs",
+          "detail": "1 pending review",
+          "command": "subagents summary"
+        },
+        {
+          "kind": "plan",
+          "label": "Focus plan item 1",
+          "detail": "governance hold item",
+          "command": "plan summary"
+        },
+        {
+          "kind": "workflow",
+          "label": "Inspect workflow hold",
+          "detail": "workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+          "command": "workflow list"
+        }
+      ]
+    },
+    {
+      "id": "plan-execution",
+      "title": "Plan Execution",
+      "cardIds": [
+        "plan-summary",
+        "linked-subagents"
+      ]
+    }
+  ],
+  "governance": {
+    "openApprovalCount": 2,
+    "openApprovalIds": [
+      "approval_f0c8ab4c-63fa-4e32-9155-ccd510252629",
+      "approval_519b4a0d-703e-44ba-92c4-eff67c5c6f22"
+    ],
+    "latestWorkflowStatus": "pending_approval",
+    "latestWorkflowReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ],
+    "governanceHoldActive": true,
+    "approvalPendingActive": true,
+    "goalBlockedActive": false,
+    "blockedGoalId": null,
+    "blockedGoalObjective": null,
+    "blockedGoalTurnCount": 0,
+    "blockedGoalBlockCount": 0,
+    "blockedGoalLastBlockerCode": null,
+    "blockedGoalLastBlockerMessage": null,
+    "recoverySuggestions": [
+      "approvals list",
+      "approval-artifacts list",
+      "workflow list",
+      "workflow-artifacts list",
+      "machine-state show"
+    ]
+  },
+  "toolPolicy": {
+    "strategyMode": "balanced",
+    "maxToolRisk": "caution",
+    "subagentMaxToolRisk": "caution",
+    "requireConfirmationForWrite": false,
+    "requireConfirmationForRestricted": true
+  },
+  "recommendations": {
+    "suggestedFirstTools": [
+      "list_approval_requests",
+      "read_approval_request",
+      "read_approval_artifact",
+      "get_dashboard_summary",
+      "get_plan_summary"
+    ],
+    "suggestedNextReadLabels": [
+      "approvalArtifact:approvalartifact_6b13bb15-c7c6-4b28-85bc-4c9703d9c94d",
+      "approvalRequest:approval_f0c8ab4c-63fa-4e32-9155-ccd510252629",
+      "workflowArtifact:workflowartifact_67074bd5-2871-4638-9e9a-c42603e5a78a",
+      "dashboardArtifact:dashboardartifact_e515e177-564d-40ac-885d-550a00fbb46a",
+      "bundleIndexArtifact:bundleartifact_5245d3d1-2eb2-4d4a-84a3-963ce956d5e8",
+      "approvalArtifact:approvalartifact_6b13bb15-c7c6-4b28-85bc-4c9703d9c94d",
+      "workflowRun:workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+      "planArtifact:planartifact_8bbee31d-1057-486b-bafc-2156b976a87c",
+      "reviewArtifact:reviewartifact_c1d55ba2-7f0a-42b1-8ff3-f094ee57792a",
+      "traceArtifact:traceartifact_d2f4a75a-ee98-4a80-ae75-f7ae379944d8"
+    ],
+    "recommendedActions": [
+      {
+        "kind": "approval",
+        "label": "Resolve approvals",
+        "detail": "approval_f0c8ab4c-63fa-4e32-9155-ccd510252629, approval_519b4a0d-703e-44ba-92c4-eff67c5c6f22",
+        "command": "approvals list"
+      },
+      {
+        "kind": "subagent",
+        "label": "Review subagent outputs",
+        "detail": "1 pending review",
+        "command": "subagents summary"
+      },
+      {
+        "kind": "plan",
+        "label": "Focus plan item 1",
+        "detail": "governance hold item",
+        "command": "plan summary"
+      },
+      {
+        "kind": "workflow",
+        "label": "Inspect workflow hold",
+        "detail": "workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+        "command": "workflow list"
+      }
+    ]
+  },
+  "latestWorkflow": {
+    "id": "workflow_b27f09f7-ce4b-408f-bb59-9dc7fcf764cd",
+    "status": "pending_approval",
+    "statusReasonCodes": [
+      "governance_hold",
+      "approval_pending",
+      "review_plan_needs_attention",
+      "review_repo_needs_attention",
+      "review_code_needs_attention"
+    ]
+  }
+}
