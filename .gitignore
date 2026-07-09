@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.*
 .evals/
+docs
 docs/agent-approvals/
 docs/agent-bundles/
 docs/agent-dashboard/

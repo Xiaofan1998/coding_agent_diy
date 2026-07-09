@@ -55,7 +55,8 @@ export async function promptForChatInput({
     let cursor = 0;
     let suggestionIndex = 0;
     let rendered = false;
-    let renderedLineCount = 0;
+    let renderedRowCount = 0;
+    let promptCursorRowOffset = 0;
     let selectedSkill = null;
 
     readline.emitKeypressEvents(input);
@@ -76,13 +77,14 @@ export async function promptForChatInput({
       if (!rendered) {
         return;
       }
-      if (renderedLineCount > 0) {
-        readline.moveCursor(output, 0, -(renderedLineCount - 1));
+      if (promptCursorRowOffset > 0) {
+        readline.moveCursor(output, 0, -promptCursorRowOffset);
       }
       readline.cursorTo(output, 0);
       readline.clearScreenDown(output);
       rendered = false;
-      renderedLineCount = 0;
+      renderedRowCount = 0;
+      promptCursorRowOffset = 0;
     };
 
     const render = () => {
@@ -97,12 +99,18 @@ export async function promptForChatInput({
           lines.push(`  ${marker} ${skill.name} — ${truncate(skill.description || "(no description)", 72)}`);
         }
       }
+      const terminalColumns = getTerminalColumns(output);
+      const promptCursorColumn = getPromptCursorColumn({ selectedSkill, cursor, buffer });
+      renderedRowCount = countRenderedRows(lines, terminalColumns);
+      promptCursorRowOffset = Math.floor(promptCursorColumn / terminalColumns);
       output.write(lines.join("\n"));
-      renderedLineCount = lines.length;
-      if (renderedLineCount > 1) {
-        readline.moveCursor(output, 0, -(renderedLineCount - 1));
+      if (renderedRowCount > 1) {
+        readline.moveCursor(output, 0, -(renderedRowCount - 1));
       }
-      readline.cursorTo(output, getPromptCursorColumn({ selectedSkill, cursor, buffer }));
+      if (promptCursorRowOffset > 0) {
+        readline.moveCursor(output, 0, promptCursorRowOffset);
+      }
+      readline.cursorTo(output, promptCursorColumn % terminalColumns);
       rendered = true;
     };
 
@@ -279,6 +287,23 @@ function composeSelectedSkillLine(skillName, buffer) {
   return `${buildSkillCommand(skillName)}${query}`.trimEnd();
 }
 
+function getTerminalColumns(output) {
+  const columns = Number(output?.columns) || Number(process.stdout?.columns) || 80;
+  return columns > 0 ? columns : 80;
+}
+
+function countRenderedRows(lines, terminalColumns) {
+  return lines.reduce((total, line) => total + countWrappedRows(line, terminalColumns), 0);
+}
+
+function countWrappedRows(value, terminalColumns) {
+  const width = stringDisplayWidth(stripAnsi(value));
+  if (width <= 0) {
+    return 1;
+  }
+  return Math.max(1, Math.ceil(width / terminalColumns));
+}
+
 function stringDisplayWidth(value) {
   let width = 0;
   for (const char of String(value || "")) {
@@ -310,4 +335,8 @@ function isWideCharacter(codePoint) {
 
 function cursorSlice(cursor, value) {
   return String(value || "").slice(0, cursor);
+}
+
+function stripAnsi(value) {
+  return String(value || "").replace(/\x1B\[[0-9;?]*[ -/]*[@-~]/g, "");
 }
