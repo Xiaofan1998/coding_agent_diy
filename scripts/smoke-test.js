@@ -437,6 +437,32 @@ const fetchUrlTool = runWithEnv(
 );
 assertIncludes(fetchUrlTool.stdout, "\"contentType\":\"text/html; charset=utf-8\"", "Expected fetch_url to preserve response content type.");
 assertIncludes(fetchUrlTool.stdout, "Example Heading", "Expected fetch_url to extract readable HTML text.");
+const interactiveSkillHelpers = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "const { getSkillSuggestions, buildSkillCommand, normalizeSkillCommandLine } = await import('./apps/cli/skill-input.js');",
+      "const skills = [",
+      "  { name: 'using-skills', description: 'Use when a skill may help', source: 'built-in' },",
+      "  { name: 'deep-agents-memory', description: 'memory backend routing', source: 'workspace-agents:geometry_videogen' }",
+      "];",
+      "console.log(JSON.stringify({",
+      "  allSuggestions: getSkillSuggestions('/', skills),",
+      "  filteredSuggestions: getSkillSuggestions('/deep', skills),",
+      "  command: buildSkillCommand('deep-agents-memory'),",
+      "  normalized: normalizeSkillCommandLine('/skill deep-agents-memory 帮我保存长期记忆')",
+      "}));"
+    ].join(" ")
+  ],
+  {
+    CODE_AGENT_DISABLE_DOTENV: "1"
+  }
+);
+assertIncludes(interactiveSkillHelpers.stdout, "\"name\":\"using-skills\"", "Expected slash-trigger suggestions to include available skills.");
+assertIncludes(interactiveSkillHelpers.stdout, "\"name\":\"deep-agents-memory\"", "Expected filtered slash suggestions to match skills by name.");
+assertIncludes(interactiveSkillHelpers.stdout, "\"command\":\"/skill deep-agents-memory \"", "Expected the interactive helper to build a slash-skill command.");
+assertIncludes(interactiveSkillHelpers.stdout, "Use skill \\\"deep-agents-memory\\\" for this request.", "Expected slash-skill input to normalize into a runtime-friendly prompt.");
 const agentLoopFollowUp = runWithEnv(
   [
     "--input-type=module",

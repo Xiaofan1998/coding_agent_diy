@@ -29,10 +29,15 @@ function renderRuntimeContext(config, toolRegistry, session, goal, repoSnapshot,
   const toolList = clampText(JSON.stringify(toolRegistry.list(), null, 2), 8000);
   const dashboardJson = clampText(JSON.stringify(dashboardSummary || {}), 4000);
   const repoContext = clampText(renderRepoContext(repoSnapshot), 12000);
-  const activatedSkillBodies = clampText(
-    activatedSkills.map(renderActivatedSkill).join("\n\n") || "(none)",
-    12000
-  );
+  // For context budget: embed full body only for the primary (first) skill;
+  // other activated skills are listed by name+description only.
+  // The full body of any skill can be loaded on demand via read_skill().
+  const primarySkillBody = activatedSkills.length > 0
+    ? clampText(renderActivatedSkill(activatedSkills[0]), 6000)
+    : "(none)";
+  const otherSkills = activatedSkills.slice(1).map((skill) =>
+    `- ${skill.name}: ${skill.description.substring(0, 120)}${skill.description.length > 120 ? "…" : ""} (source: ${skill.source})`
+  ).join("\n") || "(none)";
 
   return [
     "## Runtime Context",
@@ -61,8 +66,12 @@ function renderRuntimeContext(config, toolRegistry, session, goal, repoSnapshot,
     "## Tool List",
     toolList,
     "",
-    "## Activated Skill Bodies",
-    activatedSkillBodies
+    "## Activated Skills",
+    `Primary skill (full body embedded):`,
+    primarySkillBody,
+    "",
+    "Other activated skills (summary only — use `read_skill()` to load full body when needed):",
+    otherSkills
   ].join("\n");
 }
 

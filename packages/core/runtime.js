@@ -25,7 +25,7 @@ import { DashboardArtifactManager } from "../dashboard/artifact-manager.js";
 import { BundleIndexArtifactManager } from "../bundles/artifact-manager.js";
 import { ApprovalArtifactManager } from "../approvals/artifact-manager.js";
 import { StateSnapshotArtifactManager } from "../state-export/artifact-manager.js";
-import { ToolPolicyError, assertToolAllowed, getEffectiveToolPolicy } from "./tool-governance.js";
+import { ToolPolicyError, assertToolAllowed, getEffectiveToolPolicy, enrichErrorWithRecovery } from "./tool-governance.js";
 import { buildWorkingMemory } from "./working-memory.js";
 import { resolveStrategyProfile } from "./strategy-mode.js";
 import { runAgentLoop } from "./agent-loop.js";
@@ -292,6 +292,13 @@ export class AgentRuntime {
           policy,
           error
         });
+        // Enrich blocked-tool errors with recovery hints from the tool definition
+        throw enrichErrorWithRecovery(tool, error);
+      }
+      // For execution errors, wrap with recovery hints if available
+      if (tool.errorRecovery) {
+        const enriched = enrichErrorWithRecovery(tool, error instanceof Error ? error : new Error(String(error)));
+        throw enriched;
       }
       throw error;
     }

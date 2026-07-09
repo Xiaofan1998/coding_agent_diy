@@ -15,7 +15,7 @@ export class SubagentManager {
   async runSubagent({ objective, context, allowedTools = [], goal = null, sessionSummary = "", planItems = null, repoSnapshot = null }) {
     const resolvedGoal = goal || await this.stateStore.getActiveGoal();
     const resolvedPlanItems = planItems || await this.stateStore.getPlanItems();
-    const resolvedSessionSummary = sessionSummary || (await this.stateStore.getSession()).summary || "";
+    const resolvedSessionSummary = sessionSummary || ((await this.stateStore.getSession()).summary || "").substring(0, 1200);
     const resolvedRepoSnapshot = repoSnapshot || await buildRepoSnapshot(this.config, {
       query: objective,
       goal: resolvedGoal,
@@ -57,6 +57,9 @@ export class SubagentManager {
 
     const result = await runtime.runSyntheticTurn(contextPackage);
 
+    // Validate subagent result (per subagent-driven-development: validate before integrating)
+    const validation = validateSubagentResult(objective, result);
+
     const record = {
       id: `subagent_${Date.now()}`,
       objective,
@@ -66,7 +69,12 @@ export class SubagentManager {
       governanceHold,
       approvalRequestIds: openApprovals.map((item) => item.id),
       createdAt: new Date().toISOString(),
-      result
+      result,
+      validation: {
+        passed: validation.passed,
+        checks: validation.checks,
+        summary: validation.summary
+      }
     };
 
     await this.stateStore.saveSubagentRecord(record);
@@ -184,6 +192,55 @@ export class SubagentManager {
     await this.stateStore.savePlanRun(record);
     return record;
   }
+}
+
+/**
+ * Validate a subagent result against the original objective.
+ * Per subagent-driven-development: validate returned results before integrating.
+ */
+function validateSubagentResult(objective, result) {
+  const checks = [];
+  const message = (result && result.message) || "";
+
+  // Check 1: Non-empty result
+  checks.push({
+    name: "non_empty",
+    passed: Boolean(message && message.length > 0),
+    detail: message ? `Result length: ${message.length} chars` : "Result is empty"
+  });
+
+  // Check 2: No error indicators in result
+  const errorKeywords = ["error", "failed", "unable to", "could not", "timeout"];
+  const foundErrors = errorKeywords.filter((kw) => message.toLowerCase().includes(kw));
+  checks.push({
+    name: "no_error_signals",
+    passed: foundErrors.length === 0,
+    detail: foundErrors.length > 0
+      ? `Found potential error keywords: ${foundErrors.join(", ")}`
+      : "No error signals detected"
+  });
+
+  // Check 3: Relevance to objective
+  const objectiveTokens = objective
+    .toLowerCase()
+    .split(/[^a-z0-9\u4e00-\u9fa5]+/)
+    .filter((t) => t.length > 3);
+  const matchedTokens = objectiveTokens.filter((token) => message.toLowerCase().includes(token));
+  const relevanceRatio = objectiveTokens.length > 0
+    ? matchedTokens.length / objectiveTokens.length
+    : 0;
+  checks.push({
+    name: "objective_relevance",
+    passed: relevanceRatio >= 0.2,
+    detail: `Matched ${matchedTokens.length}/${objectiveTokens.length} objective tokens (${(relevanceRatio * 100).toFixed(0)}%)`
+  });
+
+  const passed = checks.every((c) => c.passed);
+  const summary = passed
+    ? "Subagent result validated successfully"
+    : `Subagent result has ${checks.filter((c) => !c.passed).length} failed check(s)`;
+
+  return { passed, checks, summary };
 }
 
 function summarizeSnapshot(snapshot) {

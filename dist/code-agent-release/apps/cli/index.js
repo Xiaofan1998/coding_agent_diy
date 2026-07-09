@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { AgentRuntime } from "../../packages/core/runtime.js";
 import { loadConfig } from "../../packages/shared/config.js";
@@ -12,6 +11,7 @@ import { BundleIndexArtifactManager } from "../../packages/bundles/artifact-mana
 import { ApprovalArtifactManager } from "../../packages/approvals/artifact-manager.js";
 import { StateSnapshotArtifactManager } from "../../packages/state-export/artifact-manager.js";
 import { resolveStrategyProfile, STRATEGY_PROFILES } from "../../packages/core/strategy-mode.js";
+import { normalizeSkillCommandLine, promptForChatInput } from "./skill-input.js";
 
 async function main() {
   const config = loadConfig(process.cwd());
@@ -936,8 +936,6 @@ async function handleBundleIndexArtifactsCommand(runtime, rest) {
 }
 
 async function startChat(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager) {
-  const rl = createInterface({ input, output });
-
   console.log(`Coding agent ready at ${runtime.config.projectRoot}`);
   console.log("Type /help for commands.");
   console.log("Type /exit to quit.");
@@ -945,7 +943,11 @@ async function startChat(runtime, reviewManager, reviewArtifactManager, planArti
   while (true) {
     let line;
     try {
-      line = (await rl.question("> ")).trim();
+      line = await promptForChatInput({
+        input,
+        output,
+        skillProvider: () => runtime.skillDiscovery.listSkills()
+      });
     } catch (error) {
       if (isReadlineClosedError(error)) {
         break;
@@ -965,14 +967,12 @@ async function startChat(runtime, reviewManager, reviewArtifactManager, planArti
       if (await handleInteractiveMetaCommand(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager, line)) {
         continue;
       }
-      const result = await runtime.runUserTurn(line);
+      const result = await runtime.runUserTurn(normalizeSkillCommandLine(line));
       console.log(result.message);
     } catch (error) {
       console.error(formatError(error));
     }
   }
-
-  rl.close();
 }
 
 async function handleInteractiveMetaCommand(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager, line) {

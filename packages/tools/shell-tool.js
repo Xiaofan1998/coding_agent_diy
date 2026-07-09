@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveWorkspacePath } from "../shared/workspace-roots.js";
+import { wrapSuccess, wrapError } from "./registry.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -11,6 +12,12 @@ export function createShellTool(config) {
     name: "run_shell",
     description: "Run a shell command inside the project root.",
     riskLevel: "caution",
+    granularity: "macro",
+    errorRecovery: {
+      rootCauseHint: "Command not found, permission denied, or unsafe command blocked",
+      safeRetry: "Verify the command is correct and safe, use explicit paths",
+      stopCondition: "Command confirmed unsafe or blocked by policy"
+    },
     inputSchema: {
       type: "object",
       properties: {
@@ -32,10 +39,15 @@ export function createShellTool(config) {
       const { stdout, stderr } = await execFileAsync("zsh", ["-lc", command], {
         cwd: resolvedCwd
       });
-      return {
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
+      const trimmedStdout = stdout.trim();
+      const trimmedStderr = stderr.trim();
+      return wrapSuccess({ stdout: trimmedStdout, stderr: trimmedStderr }, {
+        summary: trimmedStdout
+          ? `Command executed (${trimmedStdout.split("\n").length} lines stdout)`
+          : trimmedStderr
+            ? `Command completed with stderr output (${trimmedStderr.split("\n").length} lines)`
+            : "Command executed (no output)"
+      });
     }
   };
 }

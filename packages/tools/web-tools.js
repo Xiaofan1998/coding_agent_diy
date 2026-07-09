@@ -1,3 +1,5 @@
+import { wrapSuccess, wrapError } from "./registry.js";
+
 function buildUserAgent() {
   return "code-agent/0.1 (+https://example.invalid/code-agent)";
 }
@@ -8,6 +10,12 @@ export function createWebTools(config) {
       name: "search_web",
       description: "Search the public web and return a compact list of results.",
       riskLevel: "safe",
+      granularity: "medium",
+      errorRecovery: {
+        rootCauseHint: "Network error, API rate limit, or invalid query",
+        safeRetry: "Simplify the search query and retry",
+        stopCondition: "Confirmed network is unreachable"
+      },
       inputSchema: {
         type: "object",
         properties: {
@@ -26,17 +34,28 @@ export function createWebTools(config) {
           }
         }, config.web.timeoutMs);
         if (!response.ok) {
-          throw new Error(`Web search failed with HTTP ${response.status}.`);
+          return wrapError(new Error(`Web search failed with HTTP ${response.status}.`), {
+            next_actions: ["Retry with a different query"]
+          });
         }
 
         const html = await response.text();
-        return parseDuckDuckGoResults(html, Math.max(1, Math.min(10, Number(limit) || 5)));
+        const data = parseDuckDuckGoResults(html, Math.max(1, Math.min(10, Number(limit) || 5)));
+        return wrapSuccess(data, {
+          summary: `Web search for "${query}" returned ${data.results.length} results`
+        });
       }
     },
     {
       name: "fetch_url",
       description: "Fetch one URL and return a compact text preview.",
       riskLevel: "safe",
+      granularity: "micro",
+      errorRecovery: {
+        rootCauseHint: "URL not reachable, timeout, or DNS resolution failure",
+        safeRetry: "Verify the URL is correct and the server is accessible",
+        stopCondition: "Confirmed URL is invalid or server is permanently down"
+      },
       inputSchema: {
         type: "object",
         properties: {
@@ -53,7 +72,7 @@ export function createWebTools(config) {
           }
         }, config.web.timeoutMs);
         if (!response.ok) {
-          throw new Error(`URL fetch failed with HTTP ${response.status}.`);
+          return wrapError(new Error(`URL fetch failed with HTTP ${response.status}.`));
         }
 
         const contentType = (response.headers.get("content-type") || "").toLowerCase();
@@ -62,11 +81,14 @@ export function createWebTools(config) {
           ? extractReadableText(raw)
           : raw.trim();
 
-        return {
+        const data = {
           url,
           contentType: contentType || "(unknown)",
           preview: text.slice(0, Math.max(200, Number(maxChars) || config.web.maxFetchChars))
         };
+        return wrapSuccess(data, {
+          summary: `Fetched ${url} (${data.preview.length} chars preview, type: ${data.contentType})`
+        });
       }
     }
   ];
