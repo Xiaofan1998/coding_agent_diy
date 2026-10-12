@@ -145,24 +145,28 @@ assertIncludes(fileBackedMemory.stdout, "\"relevantCount\":1", "Expected query-t
 assertIncludes(fileBackedMemory.stdout, "\"projectScopedDir\":true", "Expected file-backed memory to be isolated by escaped project path.");
 
 
-const contextMicrocompact = runWithEnv(
+const contextCompact = runWithEnv(
   [
     "--input-type=module",
     "--eval",
     [
-      "import { microcompactContext } from './packages/core/context-compactor.js';",
+      "import { compactContext, microcompactMessages } from './packages/core/context-compactor.js';",
       "const traces = [];",
-      "const conversation = Array.from({ length: 14 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `message-${index} ${'x'.repeat(800)}` }));",
-      "const result = microcompactContext({ systemPrompt: 'system', conversation, config: { runtime: { maxContextChars: 3000, contextCompactThresholdRatio: 0.9, contextCompactKeepRecentMessages: 4, maxCompactedContextChars: 1200, maxCompactedMessageChars: 500 }, openai: { model: 'gpt-5.5' } }, createTrace: async (payload) => traces.push(payload) });",
-      "console.log(JSON.stringify({ compacted: result.compacted, firstRole: result.conversation[0].role, includesBoundary: result.conversation[0].content.includes('microcompact boundary'), recentKept: result.conversation.at(-1).content.includes('message-13'), traceKind: traces[0]?.kind }));"
+      "const transcriptMessages = Array.from({ length: 14 }, (_, index) => ({ id: index + 1, role: index % 2 ? 'assistant' : 'user', content: `message-${index} ${'x'.repeat(800)}` }));",
+      "const config = { runtime: { autoCompactEnabled: true, maxContextChars: 3000, contextCompactThresholdRatio: 0.9, contextCompactKeepRecentMessages: 4, maxCompactedContextChars: 1200, maxCompactedMessageChars: 500 }, openai: { model: 'gpt-5.5', maxTokens: 800000, maxCompletionTokens: 32000 } };",
+      "const result = await compactContext({ systemPrompt: 'system', transcriptMessages, runtimeContextMessages: [], userTurnMessage: { role: 'user', content: 'next' }, config, createTrace: async (payload) => traces.push(payload) });",
+      "const micro = microcompactMessages([{ role: 'assistant', content: [{ type: 'tool_use', id: 'x', name: 'read_file', input: {} }] }, { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'x', content: 'y'.repeat(1000) }] }], { config, maxMessageChars: 100 });",
+      "console.log(JSON.stringify({ compacted: result.compacted, source: result.source, includesBoundary: result.conversation[1].content.includes('<compact-summary>'), recentKept: result.conversation.at(-2).content.includes('message-13'), traceKind: traces[0]?.kind, microCleared: JSON.stringify(micro.messages).includes('Old tool result content cleared') }));"
     ].join(" ")
   ],
-  { CODE_AGENT_HOME: path.join(stateDir, "context-microcompact") }
+  { CODE_AGENT_HOME: path.join(stateDir, "context-compact") }
 );
-assertIncludes(contextMicrocompact.stdout, "\"compacted\":true", "Expected context microcompact to trigger over the threshold.");
-assertIncludes(contextMicrocompact.stdout, "\"includesBoundary\":true", "Expected context microcompact to insert a boundary summary message.");
-assertIncludes(contextMicrocompact.stdout, "\"recentKept\":true", "Expected context microcompact to preserve recent conversation tail.");
-assertIncludes(contextMicrocompact.stdout, "\"traceKind\":\"context_microcompact\"", "Expected context microcompact to emit a trace event.");
+assertIncludes(contextCompact.stdout, "\"compacted\":true", "Expected context compact to trigger over the threshold.");
+assertIncludes(contextCompact.stdout, "\"source\":\"traditional\"", "Expected traditional compact when no session memory is available.");
+assertIncludes(contextCompact.stdout, "\"includesBoundary\":true", "Expected compact to insert a boundary summary message.");
+assertIncludes(contextCompact.stdout, "\"recentKept\":true", "Expected compact to preserve recent conversation tail.");
+assertIncludes(contextCompact.stdout, "\"traceKind\":\"context_compact\"", "Expected context compact to emit a trace event.");
+assertIncludes(contextCompact.stdout, "\"microCleared\":true", "Expected microcompact to clear large tool_result content without owning whole-history summary.");
 
 
 const compactPromptFormatting = runWithEnv(

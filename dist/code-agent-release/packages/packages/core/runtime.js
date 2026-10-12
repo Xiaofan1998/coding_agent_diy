@@ -28,7 +28,8 @@ import { ToolPolicyError, assertToolAllowed, getEffectiveToolPolicy, enrichError
 import { classifyFilesystemAccess } from "../shared/workspace-roots.js";
 import { resolveStrategyProfile } from "./strategy-mode.js";
 import { runAgentLoop } from "./agent-loop.js";
-import { microcompactContext } from "./context-compactor.js";
+import { compactContext } from "./context-compactor.js";
+import { SessionMemoryManager } from "./session-memory.js";
 import { sanitizeTranscriptMessages } from "./transcript-utils.js";
 import crypto from "node:crypto";
 
@@ -71,6 +72,7 @@ export class AgentRuntime {
     this.isSubagent = isSubagent;
     this.pendingSteeringMessages = [];
     this.pendingFollowUpMessages = [];
+    this.sessionMemoryManager = new SessionMemoryManager(config);
   }
 
   static async create(config, options = {}) {
@@ -490,26 +492,20 @@ export class AgentRuntime {
       role,
       content: userMessage
     };
-    const rawConversation = [
-      ...toConversationHistory(session),
-      ...runtimeContextMessages,
-      userTurnMessage
-    ];
-    const compactResult = microcompactContext({
+    const compactResult = await compactContext({
       systemPrompt,
-      conversation: rawConversation,
+      transcriptMessages: session.transcriptMessages || [],
+      runtimeContextMessages,
+      userTurnMessage,
       config: this.config,
-      createTrace: async (payload) => {
+      sessionMemoryManager: this.sessionMemoryManager,
+      emitEvent: async (event) => {
         await emitEvent({
-          type: "context_microcompact",
-          timestamp: new Date().toISOString(),
-          beforeChars: payload.beforeChars,
-          afterChars: payload.afterChars,
-          thresholdChars: payload.thresholdChars,
-          maxContextChars: payload.maxContextChars,
-          olderMessageCount: payload.olderMessageCount || 0,
-          recentMessageCount: payload.recentMessageCount || 0
+          ...event,
+          timestamp: new Date().toISOString()
         });
+      },
+      createTrace: async (payload) => {
         await this.stateStore.saveTrace({
           id: `trace_${crypto.randomUUID()}`,
           createdAt: new Date().toISOString(),
@@ -518,6 +514,13 @@ export class AgentRuntime {
         });
       }
     });
+    if (compactResult.persistMessages?.length > 0) {
+      await this.stateStore.appendTranscriptTurn({
+        turnId: `${turnId}_compact`,
+        createdAt: new Date().toISOString(),
+        transcriptMessages: compactResult.persistMessages
+      });
+    }
     const conversation = compactResult.conversation;
 
     const suggestedFirstTools = dashboardSummary?.suggestedFirstTools || [];
@@ -608,6 +611,29 @@ export class AgentRuntime {
       createdAt: new Date().toISOString(),
       transcriptMessages: currentTurnTranscript
     });
+    try {
+      const updatedSession = await this.stateStore.getSession();
+      await this.sessionMemoryManager.maybeExtract({
+        transcriptMessages: updatedSession.transcriptMessages || [],
+        emitEvent: async (event) => emitEvent({ ...event, timestamp: new Date().toISOString() }),
+        createTrace: async (payload) => {
+          await this.stateStore.saveTrace({
+            id: `trace_${crypto.randomUUID()}`,
+            createdAt: new Date().toISOString(),
+            turnId,
+            ...payload
+          });
+        }
+      });
+    } catch (error) {
+      await this.stateStore.saveTrace({
+        id: `trace_${crypto.randomUUID()}`,
+        createdAt: new Date().toISOString(),
+        kind: "session_memory_extract_error",
+        turnId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
     await emitEvent({
       type: "turn_end",
       timestamp: new Date().toISOString(),

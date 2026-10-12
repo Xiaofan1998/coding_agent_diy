@@ -1220,7 +1220,11 @@ function renderRuntimeEvent(event) {
     case "turn_start":
       return `\n━━ Agent turn ${event.turnId || ""} ━━`;
     case "context_microcompact":
-      return `◌ context compacted: ${event.beforeChars ?? "?"} → ${event.afterChars ?? "?"} chars (threshold ${event.thresholdChars ?? "?"})`;
+      return `◌ context microcompacted: ${event.beforeChars ?? "?"} → ${event.afterChars ?? "?"} chars (threshold ${event.thresholdChars ?? "?"})`;
+    case "context_compact":
+      return `⬢ context compacted · source=${event.source || "traditional"} · ${event.beforeChars ?? "?"} → ${event.afterChars ?? "?"} chars (threshold ${event.thresholdChars ?? "?"})`;
+    case "session_memory_extracted":
+      return `◈ session memory extracted · ${event.currentTokens ?? "?"} tokens · ${event.path || "summary.md"}`;
     case "loop_start":
       return `↻ loop started`;
     case "loop_messages_injected":

@@ -35,6 +35,7 @@ export function loadConfig(projectRoot) {
     : path.join(stateDir, "memory");
   const memoryDir = path.join(memoryRootDir, escapeProjectPath(root));
   const sessionId = process.env.CODE_AGENT_SESSION_ID || PROCESS_SESSION_ID;
+  const sessionMemoryDir = path.join(stateDir, "sessions", sessionId, "session-memory");
   const userSkillDir = process.env.CODE_AGENT_USER_SKILL_DIR
     ? path.resolve(process.env.CODE_AGENT_USER_SKILL_DIR)
     : path.join(os.homedir(), ".code-agent", "skills");
@@ -49,6 +50,7 @@ export function loadConfig(projectRoot) {
     artifactRootDir,
     stateDir,
     memoryDir,
+    sessionMemoryDir,
     sessionId,
     promptDir: resolvePromptDir(agentRoot),
     builtInSkillDir: resolveBuiltInSkillDir(agentRoot),
@@ -74,10 +76,17 @@ export function loadConfig(projectRoot) {
       maxPromptChars: 32000,
       maxContextTokens,
       maxContextChars,
+      autoCompactEnabled: process.env.CODE_AGENT_AUTO_COMPACT !== "0",
+      autoCompactBufferTokens: Number(process.env.CODE_AGENT_AUTO_COMPACT_BUFFER_TOKENS || 13000),
       contextCompactThresholdRatio: Number(process.env.CODE_AGENT_CONTEXT_COMPACT_THRESHOLD || 0.9),
       contextCompactKeepRecentMessages: Number(process.env.CODE_AGENT_CONTEXT_COMPACT_KEEP_RECENT || 10),
       maxCompactedContextChars: Number(process.env.CODE_AGENT_MAX_COMPACTED_CONTEXT_CHARS || 6000),
       maxCompactedMessageChars: Number(process.env.CODE_AGENT_MAX_COMPACTED_MESSAGE_CHARS || 4000),
+      sessionMemoryEnabled: process.env.CODE_AGENT_SESSION_MEMORY !== "0",
+      sessionMemoryInitTokens: Number(process.env.CODE_AGENT_SESSION_MEMORY_INIT_TOKENS || 10000),
+      sessionMemoryUpdateTokens: Number(process.env.CODE_AGENT_SESSION_MEMORY_UPDATE_TOKENS || 5000),
+      sessionMemoryToolCallThreshold: Number(process.env.CODE_AGENT_SESSION_MEMORY_TOOL_CALLS || 3),
+      sessionMemoryMaxSummaryChars: Number(process.env.CODE_AGENT_SESSION_MEMORY_MAX_SUMMARY_CHARS || 12000),
       maxRepoContextChars: 12000,
       maxDashboardSummaryChars: 5000,
       maxSkillContextChars: 12000,
