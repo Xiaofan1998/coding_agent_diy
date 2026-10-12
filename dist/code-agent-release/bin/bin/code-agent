@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export CODE_AGENT_INSTALL_ROOT="${CODE_AGENT_INSTALL_ROOT:-$ROOT_DIR}"
 BUNDLED_NODE="/Users/zyb/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
 
 if command -v node >/dev/null 2>&1; then

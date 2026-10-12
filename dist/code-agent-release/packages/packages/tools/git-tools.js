@@ -1,5 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { wrapSuccess, wrapError } from "./registry.js";
+import { summarizeGitStatus } from "../context/repo-context.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -7,8 +9,16 @@ export function createGitTools(config) {
   return [
     {
       name: "git_status",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect git status for the current project if it is a git repository.",
       riskLevel: "safe",
+      granularity: "medium",
+      errorRecovery: {
+        rootCauseHint: "Project is not a git repository",
+        safeRetry: "Run `git init` if you want to start version control",
+        stopCondition: "Project is confirmed not a git repo and git init is not desired"
+      },
       inputSchema: {
         type: "object",
         properties: {},
@@ -16,13 +26,28 @@ export function createGitTools(config) {
         additionalProperties: false
       },
       execute: async () => {
-        return runGitCommand(config.projectRoot, "git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git status --short || echo '__NOT_GIT__'");
+        const result = await runGitCommand(config.projectRoot, "git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git status --short || echo '__NOT_GIT__'");
+        if (!result.ok) {
+          return wrapError(new Error(result.message));
+        }
+        const status = result.stdout ? summarizeGitStatus(result.stdout) : "(clean)";
+        return wrapSuccess(status, {
+          summary: result.stdout ? `${result.stdout.split("\n").filter(Boolean).length} files changed` : "Working tree clean"
+        });
       }
     },
     {
       name: "git_diff",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect git diff for the current project if it is a git repository.",
       riskLevel: "safe",
+      granularity: "medium",
+      errorRecovery: {
+        rootCauseHint: "Project is not a git repository, or target file does not exist",
+        safeRetry: "Verify project is a git repo with git_status first",
+        stopCondition: "Confirmed not a git repo"
+      },
       inputSchema: {
         type: "object",
         properties: {
@@ -33,13 +58,27 @@ export function createGitTools(config) {
       },
       execute: async ({ target = "" }) => {
         const suffix = target ? ` -- ${escapeShellArg(target)}` : "";
-        return runGitCommand(config.projectRoot, `git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git diff --${suffix ? "" : "stat"}${suffix} || echo '__NOT_GIT__'`);
+        const result = await runGitCommand(config.projectRoot, `git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git diff --${suffix ? "" : "stat"}${suffix} || echo '__NOT_GIT__'`);
+        if (!result.ok) {
+          return wrapError(new Error(result.message));
+        }
+        return wrapSuccess(result.stdout || "(no diff)", {
+          summary: result.stdout ? `Diff output (${result.stdout.split("\n").length} lines)` : "No changes"
+        });
       }
     },
     {
       name: "git_log",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect recent git history for the current project if it is a git repository.",
       riskLevel: "safe",
+      granularity: "medium",
+      errorRecovery: {
+        rootCauseHint: "Project is not a git repository or has no commits yet",
+        safeRetry: "Verify project is a git repo with git_status first",
+        stopCondition: "Confirmed not a git repo"
+      },
       inputSchema: {
         type: "object",
         properties: {
@@ -49,10 +88,16 @@ export function createGitTools(config) {
         additionalProperties: false
       },
       execute: async ({ limit = 5 }) => {
-        return runGitCommand(
+        const result = await runGitCommand(
           config.projectRoot,
           `git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git log --oneline -n ${Math.max(1, Math.min(limit, 20))} || echo '__NOT_GIT__'`
         );
+        if (!result.ok) {
+          return wrapError(new Error(result.message));
+        }
+        return wrapSuccess(result.stdout || "(no commits)", {
+          summary: result.stdout ? `Git log (${result.stdout.split("\n").length} commits)` : "No commits found"
+        });
       }
     }
   ];

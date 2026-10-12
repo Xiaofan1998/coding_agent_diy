@@ -1,5 +1,4 @@
-import { buildRepoSnapshot } from "../context/repo-context.js";
-import { buildSubagentContextPackage } from "../core/working-memory.js";
+import { buildSubagentContextPackage } from "./context-package.js";
 
 const READ_ONLY_SUBAGENT_TOOLS = ["list_files", "read_file", "search_files", "search_web", "fetch_url", "git_diff", "git_status"];
 const WRITE_CAPABLE_SUBAGENT_TOOLS = ["list_files", "read_file", "search_files", "search_web", "fetch_url", "run_shell", "apply_patch", "write_file", "git_diff", "git_status"];
@@ -12,15 +11,10 @@ export class SubagentManager {
     this.workspaceSnapshotManager = workspaceSnapshotManager;
   }
 
-  async runSubagent({ objective, context, allowedTools = [], goal = null, sessionSummary = "", planItems = null, repoSnapshot = null }) {
+  async runSubagent({ objective, context, allowedTools = [], goal = null, sessionContext = "", planItems = null }) {
     const resolvedGoal = goal || await this.stateStore.getActiveGoal();
     const resolvedPlanItems = planItems || await this.stateStore.getPlanItems();
-    const resolvedSessionSummary = sessionSummary || ((await this.stateStore.getSession()).summary || "").substring(0, 1200);
-    const resolvedRepoSnapshot = repoSnapshot || await buildRepoSnapshot(this.config, {
-      query: objective,
-      goal: resolvedGoal,
-      activatedSkills: []
-    });
+    const resolvedSessionContext = sessionContext;
     const openApprovals = await this.stateStore.listOpenApprovalRequests();
     const governanceHold = openApprovals.length > 0;
     const requestedTools = allowedTools.length > 0 ? allowedTools : WRITE_CAPABLE_SUBAGENT_TOOLS;
@@ -50,9 +44,8 @@ export class SubagentManager {
       extraContext: [governanceContext, context].filter(Boolean).join("\n\n"),
       allowedTools: effectiveAllowedTools,
       goal: resolvedGoal,
-      sessionSummary: resolvedSessionSummary,
-      planItems: resolvedPlanItems,
-      repoSnapshot: resolvedRepoSnapshot
+      sessionContext: resolvedSessionContext,
+      planItems: resolvedPlanItems
     });
 
     const result = await runtime.runSyntheticTurn(contextPackage);
@@ -100,7 +93,6 @@ export class SubagentManager {
   }
 
   async runPlan({ planItems, mode = "sequential", workflowId = "" }) {
-    const session = await this.stateStore.getSession();
     const goal = await this.stateStore.getActiveGoal();
     const openApprovals = await this.stateStore.listOpenApprovalRequests();
     const governanceHold = openApprovals.length > 0;
@@ -140,13 +132,8 @@ export class SubagentManager {
         context: executionContext,
         allowedTools,
         goal,
-        sessionSummary: session.summary,
-        planItems,
-        repoSnapshot: await buildRepoSnapshot(this.config, {
-          query: item.content,
-          goal,
-          activatedSkills: []
-        })
+        sessionContext: "",
+        planItems
       });
 
       results.push({

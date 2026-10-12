@@ -4,6 +4,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
   return [
     {
       name: "get_runtime_settings",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get the current runtime strategy mode and effective execution settings.",
       riskLevel: "safe",
       inputSchema: {
@@ -78,6 +80,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_plan_summary",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a linked summary of the current plan, latest execution status, and recent subagent linkage.",
       riskLevel: "safe",
       inputSchema: {
@@ -146,6 +150,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_goals",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List recent persistent goals.",
       riskLevel: "safe",
       inputSchema: {
@@ -160,6 +166,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_goal",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read one persistent goal record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -187,39 +195,9 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
       execute: async ({ id }) => stateStore.resumeGoal(id)
     },
     {
-      name: "save_memory",
-      description: "Save a memory record for future turns.",
-      riskLevel: "safe",
-      inputSchema: {
-        type: "object",
-        properties: {
-          scope: { type: "string" },
-          content: { type: "string" },
-          tags: { type: "array", items: { type: "string" } }
-        },
-        required: ["scope", "content"],
-        additionalProperties: false
-      },
-      execute: async ({ scope, content, tags = [] }) => {
-        return stateStore.saveMemory({ scope, content, tags });
-      }
-    },
-    {
-      name: "search_memory",
-      description: "Search saved memories.",
-      riskLevel: "safe",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string" }
-        },
-        required: ["query"],
-        additionalProperties: false
-      },
-      execute: async ({ query }) => stateStore.searchMemories(query)
-    },
-    {
       name: "get_dashboard_summary",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a high-level summary of goals, plans, workflows, artifacts, and traces.",
       riskLevel: "safe",
       inputSchema: {
@@ -232,6 +210,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_next_actions",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get structured recommended next actions derived from the current dashboard, plan, governance, and subagent state.",
       riskLevel: "safe",
       inputSchema: {
@@ -256,6 +236,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_state_snapshot",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a stable versioned machine-readable state snapshot for external integrations.",
       riskLevel: "safe",
       inputSchema: {
@@ -268,6 +250,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_state_snapshot_schema",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get the machine-readable JSON schema for code-agent-state.v1 snapshots.",
       riskLevel: "safe",
       inputSchema: {
@@ -280,6 +264,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_state_summary",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a compact machine-readable summary view derived from the full state snapshot.",
       riskLevel: "safe",
       inputSchema: {
@@ -292,6 +278,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_state_ui_payload",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a UI-oriented machine-state payload for dashboards and frontend panels.",
       riskLevel: "safe",
       inputSchema: {
@@ -360,6 +348,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_state_artifact_index",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a unified index over exported machine-state artifacts and their kinds.",
       riskLevel: "safe",
       inputSchema: {
@@ -386,6 +376,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "get_bundle_index_summary",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Get a compact index over dashboard, workflow bundles, review bundles, and trace bundles.",
       riskLevel: "safe",
       inputSchema: {
@@ -412,6 +404,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_dashboard_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported dashboard artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -424,6 +418,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_dashboard_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a dashboard artifact by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -444,6 +440,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_skills",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List available skills and their metadata.",
       riskLevel: "safe",
       inputSchema: {
@@ -456,6 +454,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_skill",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read one skill body by name.",
       riskLevel: "safe",
       inputSchema: {
@@ -513,6 +513,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_subagents",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List saved subagent execution records.",
       riskLevel: "safe",
       inputSchema: {
@@ -525,6 +527,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_subagent",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a saved subagent execution record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -545,6 +549,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_plan_runs",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List persisted plan execution records.",
       riskLevel: "safe",
       inputSchema: {
@@ -557,6 +563,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_plan_run",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a persisted plan execution record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -594,6 +602,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_plan_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported plan artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -606,6 +616,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_plan_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read an exported plan artifact record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -663,6 +675,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_reviews",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List saved review records.",
       riskLevel: "safe",
       inputSchema: {
@@ -675,6 +689,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_approval_requests",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List saved approval requests and their statuses.",
       riskLevel: "safe",
       inputSchema: {
@@ -687,6 +703,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_approval_request",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read one approval request by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -799,6 +817,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_state_snapshot_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported machine-readable state snapshot artifacts.",
       riskLevel: "safe",
       inputSchema: {
@@ -811,6 +831,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_state_snapshot_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read one exported machine-readable state snapshot artifact by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -831,6 +853,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_approval_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported approval artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -843,6 +867,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_approval_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read an approval artifact by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -863,6 +889,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_review_bundles",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List recent review bundles with linked workflow and artifact context.",
       riskLevel: "safe",
       inputSchema: {
@@ -877,6 +905,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_review",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a saved review record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -914,6 +944,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_review_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported review artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -926,6 +958,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_review_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read an exported review artifact record by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -960,6 +994,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_workspace_snapshots",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List saved workspace snapshots.",
       riskLevel: "safe",
       inputSchema: {
@@ -1001,6 +1037,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_workflow_runs",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List persisted workflow run records.",
       riskLevel: "safe",
       inputSchema: {
@@ -1013,6 +1051,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_workflow_bundles",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List recent workflow bundles with linked plan, review, and trace summaries.",
       riskLevel: "safe",
       inputSchema: {
@@ -1027,6 +1067,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_workflow_run",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a workflow run by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -1064,6 +1106,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_workflow_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported workflow artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -1076,6 +1120,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_workflow_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a workflow artifact by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -1110,6 +1156,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_bundle_index_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported bundle-index artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -1122,6 +1170,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_bundle_index_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a bundle-index artifact by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -1142,6 +1192,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_traces",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List recent runtime traces including model responses and tool calls.",
       riskLevel: "safe",
       inputSchema: {
@@ -1156,6 +1208,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_trace_bundles",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List recent trace bundles with linked workflow and artifact context.",
       riskLevel: "safe",
       inputSchema: {
@@ -1170,6 +1224,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_trace",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read one persisted runtime trace by id.",
       riskLevel: "safe",
       inputSchema: {
@@ -1208,6 +1264,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "list_trace_artifacts",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List exported trace artifact records.",
       riskLevel: "safe",
       inputSchema: {
@@ -1220,6 +1278,8 @@ export function createStateTools(config, stateStore, skillDiscovery, subagentMan
     },
     {
       name: "read_trace_artifact",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a trace artifact by id.",
       riskLevel: "safe",
       inputSchema: {

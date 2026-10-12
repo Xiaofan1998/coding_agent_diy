@@ -5,10 +5,11 @@ export class MockResponsesClient {
     this.config = config;
   }
 
-  async createResponse({ instructions, conversationItems, toolDefinitions, previousResponseId, inputItems }) {
+  async createResponse({ instructions, conversationItems, toolDefinitions }) {
     const responseId = `mock_response_${++mockSequence}`;
+    const conversation = conversationItems || [];
 
-    if (inputItems?.length) {
+    if (hasToolResult(conversation)) {
       return {
         id: responseId,
         outputText: "Mock model finished after receiving tool output.",
@@ -17,7 +18,6 @@ export class MockResponsesClient {
       };
     }
 
-    const conversation = conversationItems || [];
     const lastUserText = findLastUserText(conversation);
     const redirectNotice = conversation.some((item) => {
       return item.role === "user" && String(item.content || "").includes('Strategy notice: first tool');
@@ -82,7 +82,6 @@ export class MockResponsesClient {
     }
 
     const mismatchCandidates = [
-      "search_memory",
       "list_reviews",
       "list_files",
       "list_skills"
@@ -105,6 +104,12 @@ export class MockResponsesClient {
       rawOutput: []
     };
   }
+}
+
+function hasToolResult(conversation) {
+  return (conversation || []).some((item) => {
+    return Array.isArray(item.content) && item.content.some((block) => block?.type === "tool_result");
+  });
 }
 
 function findLastUserText(conversation) {

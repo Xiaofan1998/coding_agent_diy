@@ -1,13 +1,14 @@
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { ensureDir, hashString, readJson } from "../shared/fs-utils.js";
+import { ensureDir } from "../shared/fs-utils.js";
+import { FileMemoryStore } from "./file-memory-store.js";
 
 export class SqliteStateStore {
   constructor(config) {
     this.config = config;
-    this.sessionId = hashString(config.projectRoot);
+    this.sessionId = config.sessionId;
     this.dbFile = path.join(config.stateDir, "state.db");
-    this.legacyJsonFile = path.join(config.stateDir, "state.json");
+    this.memoryStore = new FileMemoryStore(config);
     this.db = null;
   }
 
@@ -16,8 +17,8 @@ export class SqliteStateStore {
     await ensureDir(config.stateDir);
     store.open();
     store.bootstrapSchema();
-    await store.migrateLegacyJsonIfPresent();
     store.ensureSession();
+    await store.memoryStore.ensureInitialized();
     return store;
   }
 
@@ -32,8 +33,7 @@ export class SqliteStateStore {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        project_root TEXT NOT NULL,
-        summary TEXT NOT NULL DEFAULT ''
+        project_root TEXT NOT NULL
       );
 
       CREATE TABLE IF NOT EXISTS runtime_settings (
@@ -42,15 +42,26 @@ export class SqliteStateStore {
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
       );
 
-      CREATE TABLE IF NOT EXISTS turns (
+
+      CREATE TABLE IF NOT EXISTS transcript_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
+        turn_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
         created_at TEXT NOT NULL,
         role TEXT NOT NULL,
-        user_message TEXT NOT NULL,
-        response TEXT NOT NULL,
+        message_kind TEXT NOT NULL,
+        content_json TEXT NOT NULL,
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
       );
+
+      CREATE INDEX IF NOT EXISTS idx_transcript_messages_session_seq
+        ON transcript_messages(session_id, id);
+
+      CREATE INDEX IF NOT EXISTS idx_transcript_messages_turn
+        ON transcript_messages(turn_id, seq);
+
+      DROP TABLE IF EXISTS turns;
 
       CREATE TABLE IF NOT EXISTS plan_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,13 +85,6 @@ export class SqliteStateStore {
         last_blocker_message TEXT
       );
 
-      CREATE TABLE IF NOT EXISTS memories (
-        id TEXT PRIMARY KEY,
-        created_at TEXT NOT NULL,
-        scope TEXT NOT NULL,
-        content TEXT NOT NULL,
-        tags_json TEXT NOT NULL DEFAULT '[]'
-      );
 
       CREATE TABLE IF NOT EXISTS subagents (
         id TEXT PRIMARY KEY,
@@ -218,181 +222,214 @@ export class SqliteStateStore {
   ensureSession() {
     this.db
       .prepare(`
-        INSERT INTO sessions (id, project_root, summary)
-        VALUES (?, ?, '')
+        INSERT INTO sessions (id, project_root)
+        VALUES (?, ?)
         ON CONFLICT(id) DO NOTHING
       `)
       .run(this.sessionId, this.config.projectRoot);
   }
 
-  async migrateLegacyJsonIfPresent() {
-    const legacy = await readJson(this.legacyJsonFile, null);
-    if (!legacy) {
-      return;
-    }
-
-    const hasExistingData = this.db.prepare("SELECT COUNT(*) AS count FROM sessions").get().count > 0;
-    if (hasExistingData) {
-      return;
-    }
-
-    this.db.exec("BEGIN");
-    try {
-      for (const session of Object.values(legacy.sessions || {})) {
-        this.db
-          .prepare("INSERT OR REPLACE INTO sessions (id, project_root, summary) VALUES (?, ?, ?)")
-          .run(session.id, session.projectRoot, session.summary || "");
-
-        (session.turns || []).forEach((turn) => {
-          this.db
-            .prepare(`
-              INSERT INTO turns (session_id, created_at, role, user_message, response)
-              VALUES (?, ?, ?, ?, ?)
-            `)
-            .run(
-              session.id,
-              turn.createdAt || new Date().toISOString(),
-              turn.role || "user",
-              turn.userMessage || "",
-              turn.response || ""
-            );
-        });
-
-        (session.activePlanItems || []).forEach((item, index) => {
-          this.db
-            .prepare(`
-              INSERT INTO plan_items (session_id, sort_order, content, status)
-              VALUES (?, ?, ?, ?)
-            `)
-            .run(session.id, index, item.content, item.status);
-        });
-      }
-
-      for (const goal of legacy.goals || []) {
-        this.db
-          .prepare(`
-            INSERT OR REPLACE INTO goals
-            (id, objective, status, created_at, updated_at, turn_count, block_count, completion_criteria, last_blocker_code, last_blocker_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `)
-          .run(
-            goal.id,
-            goal.objective,
-            goal.status,
-            goal.createdAt,
-            goal.updatedAt,
-            goal.turnCount || 0,
-            goal.blockCount || 0,
-            goal.completionCriteria || null,
-            goal.lastBlockerCode || null,
-            goal.lastBlockerMessage || null
-          );
-      }
-
-      for (const memory of legacy.memories || []) {
-        this.db
-          .prepare(`
-            INSERT OR REPLACE INTO memories (id, created_at, scope, content, tags_json)
-            VALUES (?, ?, ?, ?, ?)
-          `)
-          .run(
-            memory.id,
-            memory.createdAt,
-            memory.scope,
-            memory.content,
-            JSON.stringify(memory.tags || [])
-          );
-      }
-
-      for (const record of Object.values(legacy.subagents || {})) {
-        this.db
-          .prepare(`
-            INSERT OR REPLACE INTO subagents (id, created_at, payload_json)
-            VALUES (?, ?, ?)
-          `)
-          .run(record.id, record.createdAt || new Date().toISOString(), JSON.stringify(record));
-      }
-
-      this.db.exec("COMMIT");
-    } catch (error) {
-      this.db.exec("ROLLBACK");
-      throw error;
-    }
-  }
-
   async getSession() {
     const session = this.db
-      .prepare("SELECT id, project_root, summary FROM sessions WHERE id = ?")
+      .prepare("SELECT id, project_root FROM sessions WHERE id = ?")
       .get(this.sessionId);
 
-    const turns = await this.listTurns(30, "asc");
+    const transcriptMessages = await this.listTranscriptMessages(120, "asc");
+    const transcriptTurnCount = await this.countTranscriptTurns();
 
     const activePlanItems = await this.getPlanItems();
 
     return {
       id: session.id,
       projectRoot: session.project_root,
-      turns,
-      summary: session.summary || "",
+      transcriptMessages,
+      transcriptTurnCount,
       activePlanItems
     };
   }
 
-  async appendTurn(turn) {
-    this.db
+  async listSessions({ projectRoot = this.config.projectRoot } = {}) {
+    return this.db
       .prepare(`
-        INSERT INTO turns (session_id, created_at, role, user_message, response)
-        VALUES (?, ?, ?, ?, ?)
+        SELECT
+          s.id,
+          s.project_root,
+          COUNT(DISTINCT tm.turn_id) AS transcript_turn_count,
+          MAX(tm.created_at) AS last_message_at
+        FROM sessions s
+        LEFT JOIN transcript_messages tm ON tm.session_id = s.id
+        WHERE s.project_root = ?
+        GROUP BY s.id, s.project_root
+        ORDER BY COALESCE(MAX(tm.created_at), '') DESC, s.id ASC
       `)
-      .run(
-        this.sessionId,
-        turn.createdAt,
-        turn.role || "user",
-        turn.userMessage,
-        turn.response
-      );
+      .all(projectRoot)
+      .map((row) => ({
+        id: row.id,
+        projectRoot: row.project_root,
+        transcriptTurnCount: row.transcript_turn_count || 0,
+        lastMessageAt: row.last_message_at || null,
+        current: row.id === this.sessionId
+      }));
+  }
 
-    const ids = this.db
+  async resumeSession(id) {
+    const row = this.db
+      .prepare("SELECT id, project_root FROM sessions WHERE id = ?")
+      .get(id);
+    if (!row) {
+      return null;
+    }
+    if (row.project_root !== this.config.projectRoot) {
+      throw new Error(`Session ${id} belongs to ${row.project_root}, not ${this.config.projectRoot}.`);
+    }
+    this.sessionId = row.id;
+    return this.getSession();
+  }
+
+  async getTurnBundle(turnId) {
+    const traces = this.db
       .prepare(`
-        SELECT id FROM turns
-        WHERE session_id = ?
-        ORDER BY id DESC
-        LIMIT -1 OFFSET 30
+        SELECT payload_json
+        FROM traces
+        WHERE payload_json LIKE ?
+        ORDER BY created_at ASC
+      `)
+      .all(`%${turnId}%`)
+      .map((row) => JSON.parse(row.payload_json))
+      .filter((trace) => trace.turnId === turnId);
+
+    const transcriptMessages = this.listTranscriptMessagesForTurn(turnId);
+    const sessionId = transcriptMessages[0]?.sessionId || null;
+    const session = sessionId
+      ? this.db.prepare("SELECT id, project_root FROM sessions WHERE id = ?").get(sessionId)
+      : null;
+    const turnStart = traces.find((trace) => trace.kind === "turn_start") || null;
+    const turnEnd = traces.find((trace) => trace.kind === "turn_end") || null;
+
+    return {
+      turnId,
+      session: session ? { id: session.id, projectRoot: session.project_root } : null,
+      transcriptMessages,
+      inferredFromTraces: transcriptMessages.length === 0 && traces.length > 0 ? {
+        createdAt: turnStart?.createdAt || null,
+        role: turnStart?.role || null,
+        userMessage: turnStart?.userMessage || null,
+        response: turnEnd?.response || null
+      } : null,
+      traces
+    };
+  }
+
+  async appendTranscriptTurn({ turnId = `turn_${Date.now()}`, createdAt = new Date().toISOString(), transcriptMessages = [] } = {}) {
+    this.db.prepare("DELETE FROM transcript_messages WHERE session_id = ? AND turn_id = ?").run(this.sessionId, turnId);
+    this.insertTranscriptMessages(this.sessionId, turnId, createdAt, transcriptMessages);
+
+    const prunedTurnIds = this.db
+      .prepare(`
+        SELECT turn_id
+        FROM (
+          SELECT turn_id, MAX(id) AS max_id
+          FROM transcript_messages
+          WHERE session_id = ?
+          GROUP BY turn_id
+          ORDER BY max_id DESC
+          LIMIT -1 OFFSET 30
+        )
       `)
       .all(this.sessionId)
-      .map((row) => row.id);
+      .map((row) => row.turn_id)
+      .filter(Boolean);
 
-    if (ids.length > 0) {
-      this.db.prepare(`DELETE FROM turns WHERE id IN (${ids.map(() => "?").join(",")})`).run(...ids);
+    if (prunedTurnIds.length > 0) {
+      this.db
+        .prepare(`DELETE FROM transcript_messages WHERE session_id = ? AND turn_id IN (${prunedTurnIds.map(() => "?").join(",")})`)
+        .run(this.sessionId, ...prunedTurnIds);
     }
 
     return this.getSession();
   }
 
-  async listTurns(limit = 10, order = "desc") {
-    const normalizedOrder = order === "asc" ? "ASC" : "DESC";
-    const turns = this.db
-      .prepare(`
-        SELECT created_at, role, user_message, response
-        FROM turns
-        WHERE session_id = ?
-        ORDER BY id ${normalizedOrder}
-        LIMIT ?
-      `)
-      .all(this.sessionId, limit)
-      .map((row) => ({
-        createdAt: row.created_at,
-        role: row.role,
-        userMessage: row.user_message,
-        response: row.response
-      }));
-
-    return normalizedOrder === "DESC" ? turns : turns;
+  async countTranscriptTurns() {
+    const row = this.db
+      .prepare("SELECT COUNT(DISTINCT turn_id) AS count FROM transcript_messages WHERE session_id = ?")
+      .get(this.sessionId);
+    return row?.count || 0;
   }
 
-  async saveSummary(summary) {
-    this.db.prepare("UPDATE sessions SET summary = ? WHERE id = ?").run(summary, this.sessionId);
-    return summary;
+  insertTranscriptMessages(sessionId, turnId, createdAt, messages = []) {
+    const insert = this.db.prepare(`
+      INSERT INTO transcript_messages (session_id, turn_id, seq, created_at, role, message_kind, content_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    messages.forEach((message, index) => {
+      const normalized = normalizeTranscriptMessage(message);
+      insert.run(
+        sessionId,
+        turnId,
+        index,
+        createdAt,
+        normalized.role,
+        inferTranscriptMessageKind(normalized),
+        JSON.stringify(normalized.content)
+      );
+    });
+  }
+
+  async listTranscriptMessages(limit = 120, order = "asc") {
+    const normalizedOrder = order === "desc" ? "DESC" : "ASC";
+    const rows = this.db
+      .prepare(`
+        SELECT id, session_id, turn_id, seq, created_at, role, message_kind, content_json
+        FROM transcript_messages
+        WHERE session_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+      `)
+      .all(this.sessionId, limit);
+    const orderedRows = normalizedOrder === "DESC" ? rows : rows.reverse();
+    return orderedRows.map(rowToTranscriptMessage);
+  }
+
+  listTranscriptMessagesForTurn(turnId) {
+    return this.db
+      .prepare(`
+        SELECT id, session_id, turn_id, seq, created_at, role, message_kind, content_json
+        FROM transcript_messages
+        WHERE turn_id = ?
+        ORDER BY seq ASC
+      `)
+      .all(turnId)
+      .map(rowToTranscriptMessage);
+  }
+
+  async listTranscriptTurns(limit = 10, order = "desc") {
+    const normalizedOrder = order === "asc" ? "ASC" : "DESC";
+    const rows = this.db
+      .prepare(`
+        SELECT turn_id, MIN(created_at) AS created_at, MAX(id) AS max_id, COUNT(*) AS message_count
+        FROM transcript_messages
+        WHERE session_id = ?
+        GROUP BY turn_id
+        ORDER BY max_id ${normalizedOrder}
+        LIMIT ?
+      `)
+      .all(this.sessionId, limit);
+
+    return rows.map((row) => {
+      const messages = this.listTranscriptMessagesForTurn(row.turn_id);
+      const assistantMessages = messages.filter((message) => message.role === "assistant");
+      const userMessages = messages.filter((message) => message.role === "user" && !isToolResultOnlyMessage(message));
+      return {
+        turnId: row.turn_id,
+        createdAt: row.created_at,
+        messageCount: row.message_count || messages.length,
+        userText: transcriptMessagesToText(userMessages),
+        assistantText: transcriptMessagesToText(assistantMessages),
+        toolUseCount: messages.filter((message) => message.messageKind === "tool_use").length,
+        toolResultCount: messages.filter((message) => message.messageKind === "tool_result").length,
+        thinkingBlockCount: messages.reduce((count, message) => count + countThinkingBlocks(message.content), 0)
+      };
+    });
   }
 
   async getRuntimeSettings() {
@@ -691,41 +728,16 @@ export class SqliteStateStore {
   }
 
   async saveMemory(memory) {
-    const record = {
-      id: `memory_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      scope: memory.scope,
-      content: memory.content,
-      tags: memory.tags || []
-    };
-
-    this.db
-      .prepare(`
-        INSERT INTO memories (id, created_at, scope, content, tags_json)
-        VALUES (?, ?, ?, ?, ?)
-      `)
-      .run(record.id, record.createdAt, record.scope, record.content, JSON.stringify(record.tags));
-
-    return record;
+    return this.memoryStore.saveMemory(memory);
   }
 
-  async searchMemories(query) {
-    const lowered = query.toLowerCase();
-    return this.db
-      .prepare(`
-        SELECT id, created_at, scope, content, tags_json
-        FROM memories
-        ORDER BY created_at DESC
-      `)
-      .all()
-      .map((row) => ({
-        id: row.id,
-        createdAt: row.created_at,
-        scope: row.scope,
-        content: row.content,
-        tags: JSON.parse(row.tags_json || "[]")
-      }))
-      .filter((memory) => JSON.stringify(memory).toLowerCase().includes(lowered));
+  async searchMemories(query = "") {
+    return this.memoryStore.searchMemories(query);
+  }
+
+
+  async findRelevantMemories(query = "", options = {}) {
+    return this.memoryStore.findRelevantMemories(query, options);
   }
 
   async saveSubagentRecord(record) {
@@ -760,6 +772,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         ...JSON.parse(row.payload_json)
       }));
@@ -860,6 +874,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         ...JSON.parse(row.payload_json)
       }));
@@ -954,6 +970,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         title: row.title,
         objective: row.objective,
@@ -1028,6 +1046,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         reviewId: row.review_id,
         reviewKind: row.review_kind,
@@ -1214,6 +1234,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         workflowId: row.workflow_id,
         title: row.title,
@@ -1281,6 +1303,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         title: row.title,
         path: row.path,
@@ -1348,6 +1372,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         title: row.title,
         path: row.path,
@@ -1595,6 +1621,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         title: row.title,
         path: row.path,
@@ -1645,6 +1673,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         approvalId: row.approval_id || null,
         workflowId: row.workflow_id || null,
@@ -1807,6 +1837,8 @@ export class SqliteStateStore {
       .all()
       .map((row) => ({
         id: row.id,
+        id: row.id,
+        turnId: row.turn_id || null,
         createdAt: row.created_at,
         title: row.title,
         path: row.path,
@@ -2382,4 +2414,101 @@ function ensureColumn(db, tableName, columnName, columnType) {
   if (!columns.some((column) => column.name === columnName)) {
     db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`);
   }
+}
+
+function normalizeTranscriptMessage(message) {
+  const role = ["user", "assistant", "developer", "system"].includes(message?.role)
+    ? message.role
+    : "user";
+  return {
+    role,
+    content: message?.content ?? ""
+  };
+}
+
+function inferTranscriptMessageKind(message) {
+  if (message.role === "developer" || message.role === "system") {
+    return "compact_boundary";
+  }
+  const blocks = Array.isArray(message.content) ? message.content : [];
+  if (blocks.some((block) => block?.type === "tool_result")) {
+    return "tool_result";
+  }
+  if (blocks.some((block) => block?.type === "tool_use")) {
+    return "tool_use";
+  }
+  if (blocks.some((block) => block?.type === "thinking" || block?.type === "redacted_thinking" || block?.type === "thinking_summary")) {
+    return "thinking";
+  }
+  return message.role === "assistant" ? "assistant_text" : "user_text";
+}
+
+function isToolResultOnlyMessage(message) {
+  const blocks = Array.isArray(message?.content) ? message.content : [];
+  return blocks.length > 0 && blocks.every((block) => block?.type === "tool_result");
+}
+
+function transcriptMessagesToText(messages) {
+  return messages
+    .map((message) => contentToText(message.content))
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function contentToText(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (!Array.isArray(content)) {
+    return "";
+  }
+  return content.map((block) => {
+    if (!block || typeof block !== "object") {
+      return "";
+    }
+    if (block.type === "text") {
+      return block.text || "";
+    }
+    if (block.type === "tool_use") {
+      return `[tool_use ${block.name || "tool"} ${block.id || ""}]`;
+    }
+    if (block.type === "tool_result") {
+      return `[tool_result ${block.tool_use_id || ""} ${contentToText(block.content)}]`;
+    }
+    if (block.type === "thinking" || block.type === "thinking_summary") {
+      return "[thinking]";
+    }
+    if (block.type === "redacted_thinking") {
+      return "[redacted_thinking]";
+    }
+    return "";
+  }).filter(Boolean).join(" ");
+}
+
+function countThinkingBlocks(content) {
+  if (!Array.isArray(content)) {
+    return 0;
+  }
+  return content.filter((block) => block?.type === "thinking" || block?.type === "redacted_thinking" || block?.type === "thinking_summary").length;
+}
+
+function rowToTranscriptMessage(row) {
+  let content;
+  try {
+    content = JSON.parse(row.content_json);
+  } catch {
+    content = "";
+  }
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    turnId: row.turn_id,
+    seq: row.seq,
+    createdAt: row.created_at,
+    role: row.role,
+    messageKind: row.message_kind,
+    content
+  };
 }

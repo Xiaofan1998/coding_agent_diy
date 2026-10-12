@@ -33,8 +33,21 @@ async function main() {
       return;
     }
 
-    const result = await runtime.runUserTurn(prompt);
-    console.log(result.message);
+    await runAndRenderTurn(runtime, prompt);
+    return;
+  }
+
+  if (command === "run-events") {
+    const prompt = rest.join(" ").trim();
+    if (!prompt) {
+      console.error("Usage: code-agent run-events <prompt>");
+      process.exitCode = 1;
+      return;
+    }
+
+    for await (const event of runtime.runUserTurnEvents(prompt)) {
+      console.log(JSON.stringify(event));
+    }
     return;
   }
 
@@ -194,39 +207,40 @@ async function handleGoalCommand(runtime, rest) {
     if (!objective) {
       console.error("Usage: code-agent goal create <objective>");
       process.exitCode = 1;
-      return;
+      return { type: "error" };
     }
 
     const goal = await runtime.stateStore.createGoal(objective);
     console.log(`Created goal ${goal.id}: ${goal.objective}`);
-    return;
+    console.log(`Goal mode active. Type the next request normally; events will stream under this goal.`);
+    return { type: "goal_mode_enter", goal };
   }
 
   if (subcommand === "show") {
     const id = args[0] || "";
     const goal = id ? await runtime.stateStore.getGoal(id) : await runtime.stateStore.getActiveGoal();
     console.log(goal ? JSON.stringify(goal, null, 2) : (id ? `No such goal: ${id}` : "No active goal."));
-    return;
+    return { type: "handled" };
   }
 
   if (subcommand === "list") {
     const limit = args[0] ? Number(args[0]) : 20;
     console.log(JSON.stringify(await runtime.stateStore.listGoals(Number.isFinite(limit) ? limit : 20), null, 2));
-    return;
+    return { type: "handled" };
   }
 
   if (subcommand === "complete") {
     const id = args[0] || "";
     const goal = await runtime.stateStore.updateGoalStatus("complete", id);
     console.log(goal ? `Completed goal ${goal.id}.` : (id ? `No such goal: ${id}` : "No active goal."));
-    return;
+    return { type: "goal_mode_exit", goal };
   }
 
   if (subcommand === "cancel") {
     const id = args[0] || "";
     const goal = await runtime.stateStore.updateGoalStatus("cancelled", id);
     console.log(goal ? `Cancelled goal ${goal.id}.` : (id ? `No such goal: ${id}` : "No active goal."));
-    return;
+    return { type: "goal_mode_exit", goal };
   }
 
   if (subcommand === "resume") {
@@ -234,21 +248,26 @@ async function handleGoalCommand(runtime, rest) {
     if (!id) {
       console.error("Usage: code-agent goal resume <id>");
       process.exitCode = 1;
-      return;
+      return { type: "error" };
     }
     const goal = await runtime.stateStore.resumeGoal(id);
     console.log(goal ? `Resumed goal ${goal.id}: ${goal.objective}` : `No such goal: ${id}`);
-    return;
+    if (goal) {
+      console.log(`Goal mode active. Type the next request normally; events will stream under this goal.`);
+      return { type: "goal_mode_enter", goal };
+    }
+    return { type: "handled" };
   }
 
   if (subcommand === "diagnose") {
     const id = args[0] || "";
     console.log(await renderGoalDiagnosis(runtime, { goalId: id }));
-    return;
+    return { type: "handled" };
   }
 
   console.error("Usage: code-agent goal <create|show [id]|list [limit]|complete [id]|cancel [id]|resume <id>|diagnose [id]>");
   process.exitCode = 1;
+  return { type: "error" };
 }
 
 async function handleSessionCommand(runtime, rest) {
@@ -259,8 +278,7 @@ async function handleSessionCommand(runtime, rest) {
     console.log(JSON.stringify({
       id: session.id,
       projectRoot: session.projectRoot,
-      summary: session.summary,
-      turnCount: session.turns.length,
+      transcriptTurnCount: session.transcriptTurnCount || 0,
       activePlanItems: session.activePlanItems
     }, null, 2));
     return;
@@ -268,8 +286,8 @@ async function handleSessionCommand(runtime, rest) {
 
   if (subcommand === "history") {
     const limit = arg ? Number(arg) : 10;
-    const turns = await runtime.stateStore.listTurns(Number.isFinite(limit) ? limit : 10, "desc");
-    console.log(renderSessionHistory(turns));
+    const transcriptTurns = await runtime.stateStore.listTranscriptTurns(Number.isFinite(limit) ? limit : 10, "desc");
+    console.log(renderSessionHistory(transcriptTurns));
     return;
   }
 
@@ -847,14 +865,12 @@ async function handleConfigCommand(runtime, rest) {
           workspaceRoots: runtime.config.workspaceRoots,
           allowPaths: runtime.config.allowPaths,
           stateDir: runtime.config.stateDir,
-          provider: runtime.config.anthropic?.authToken ? "anthropic-compatible" : "openai-responses",
+          provider: "openai-chat-completions",
           baseUrl: runtime.config.openai.baseUrl,
           model: runtime.config.openai.model,
-          anthropicBaseUrl: runtime.config.anthropic?.baseUrl || "",
-          anthropicModel: runtime.config.anthropic?.model || "",
-          anthropicSubagentModel: runtime.config.anthropic?.subagentModel || "",
+          maxTokens: runtime.config.openai.maxTokens,
+          maxCompletionTokens: runtime.config.openai.maxCompletionTokens,
           openaiConfigured: Boolean(runtime.config.openai.apiKey),
-          anthropicConfigured: Boolean(runtime.config.anthropic?.authToken),
           envFileLoaded: runtime.config.env?.loaded || false,
           envFileLoadedKeys: runtime.config.env?.loadedKeys || [],
           strategyMode: runtime.config.runtime.strategyMode || "balanced",
@@ -940,13 +956,19 @@ async function startChat(runtime, reviewManager, reviewArtifactManager, planArti
   console.log("Type /help for commands.");
   console.log("Type /exit to quit.");
 
+  let activeGoal = await runtime.stateStore.getActiveGoal();
+  if (activeGoal) {
+    console.log(`Goal mode active: ${activeGoal.id} — ${activeGoal.objective}`);
+  }
+
   while (true) {
     let line;
     try {
       line = await promptForChatInput({
         input,
         output,
-        skillProvider: () => runtime.skillDiscovery.listSkills()
+        skillProvider: () => runtime.skillDiscovery.listSkills(),
+        modeLabel: activeGoal ? `goal:${shortId(activeGoal.id)}` : ""
       });
     } catch (error) {
       if (isReadlineClosedError(error)) {
@@ -964,23 +986,36 @@ async function startChat(runtime, reviewManager, reviewArtifactManager, planArti
     }
 
     try {
-      if (await handleInteractiveMetaCommand(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager, line)) {
+      const metaResult = await handleInteractiveMetaCommand(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager, line);
+      if (metaResult) {
+        if (metaResult.type === "goal_mode_enter") {
+          activeGoal = metaResult.goal;
+        } else if (metaResult.type === "goal_mode_exit") {
+          activeGoal = await runtime.stateStore.getActiveGoal();
+        } else {
+          activeGoal = await runtime.stateStore.getActiveGoal();
+        }
         continue;
       }
-      const result = await runtime.runUserTurn(normalizeSkillCommandLine(line));
-      console.log(result.message);
+      await runAndRenderTurn(runtime, normalizeSkillCommandLine(line));
+      activeGoal = await runtime.stateStore.getActiveGoal();
     } catch (error) {
       console.error(formatError(error));
     }
   }
 }
 
+
+function shortId(id) {
+  const value = String(id || "");
+  return value.length > 10 ? value.slice(-10) : value;
+}
+
 async function handleInteractiveMetaCommand(runtime, reviewManager, reviewArtifactManager, planArtifactManager, dashboardArtifactManager, bundleIndexArtifactManager, approvalArtifactManager, stateSnapshotArtifactManager, line) {
   const [command, ...rest] = line.split(/\s+/);
 
   if (command === "/goal") {
-    await handleGoalCommand(runtime, rest);
-    return true;
+    return await handleGoalCommand(runtime, rest);
   }
 
   if (command === "/plan") {
@@ -1151,6 +1186,112 @@ async function runNamedReview(reviewManager, kind) {
   throw new Error(`Unknown review kind: ${kind}`);
 }
 
+async function runAndRenderTurn(runtime, prompt) {
+  let printedFinal = false;
+
+  for await (const event of runtime.runUserTurnEvents(prompt)) {
+    if (event.type === "assistant_final") {
+      console.log(renderFinalAnswer(event.content || ""));
+      printedFinal = true;
+      continue;
+    }
+
+    if (event.type === "turn_result") {
+      if (!printedFinal && event.message) {
+        console.log(renderFinalAnswer(event.message));
+        printedFinal = true;
+      }
+      continue;
+    }
+
+    const rendered = renderRuntimeEvent(event);
+    if (rendered) {
+      console.log(rendered);
+    }
+  }
+}
+
+function renderFinalAnswer(content) {
+  return `\n━━ Final answer ━━\n${content}`;
+}
+
+function renderRuntimeEvent(event) {
+  switch (event.type) {
+    case "turn_start":
+      return `\n━━ Agent turn ${event.turnId || ""} ━━`;
+    case "context_microcompact":
+      return `◌ context compacted: ${event.beforeChars ?? "?"} → ${event.afterChars ?? "?"} chars (threshold ${event.thresholdChars ?? "?"})`;
+    case "loop_start":
+      return `↻ loop started`;
+    case "loop_messages_injected":
+      return `＋ injected ${event.count ?? 0} ${event.source || "runtime"} message(s)`;
+    case "memory_context_injected":
+      return `＋ memory context injected · ${event.count ?? 0} item(s)`;
+    case "model_request_start":
+      return `⇢ model request`;
+    case "model_response": {
+      const callCount = Number.isFinite(event.functionCallCount)
+        ? event.functionCallCount
+        : Array.isArray(event.functionCalls) ? event.functionCalls.length : 0;
+      const text = singleLine(event.outputText || "");
+      const preview = text ? ` · text: ${truncate(text, 180)}` : "";
+      return `⇠ model response · ${callCount} tool call(s)${preview}`;
+    }
+    case "first_tool_strategy": {
+      const suggested = Array.isArray(event.suggestedFirstTools)
+        ? event.suggestedFirstTools.join(", ") || "none"
+        : event.suggestedTool || "none";
+      const matched = event.matchedRecommendation ?? event.matched ?? false;
+      return `◇ first tool strategy · chosen=${event.chosenTool || "none"} · suggested=${suggested} · matched=${Boolean(matched)}`;
+    }
+    case "first_tool_strategy_redirect": {
+      const suggested = Array.isArray(event.suggestedFirstTools)
+        ? event.suggestedFirstTools.join(", ") || "none"
+        : event.suggestedTool || "none";
+      return `↺ first tool redirected · chosen=${event.chosenTool || "none"} · suggested=${suggested}`;
+    }
+    case "tool_call_start":
+      return `╭─ tool ${event.toolName || event.name || "unknown"} · risk=${event.riskLevel || "unknown"}\n│ args ${truncate(compactJson(event.arguments), 500)}`;
+    case "tool_call_end": {
+      const status = event.hadError || event.ok === false ? "error" : "ok";
+      const output = singleLine(event.output || "");
+      const preview = output ? `\n╰─ tool ${event.toolName || event.name || "unknown"} ${status} · output ${event.outputChars ?? output.length} chars · ${truncate(output, 300)}` : `\n╰─ tool ${event.toolName || event.name || "unknown"} ${status}`;
+      return preview;
+    }
+    case "loop_end":
+      return `✓ loop ended · ${event.toolSteps ?? 0} tool step(s)`;
+    case "turn_error":
+      return `✕ turn error · ${event.message || event.error || "unknown error"}`;
+    case "turn_end":
+      return `⎋ turn stored · ${event.turnId || ""}`;
+    default:
+      return null;
+  }
+}
+
+function compactJson(value) {
+  if (value === undefined || value === null || value === "") {
+    return "{}";
+  }
+  if (typeof value === "string") {
+    return singleLine(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+
+function truncate(value, maxLength) {
+  const text = String(value);
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, Math.max(0, maxLength - 1))}…`;
+}
+
 function formatError(error) {
   if (error instanceof Error) {
     return `Error: ${error.message}`;
@@ -1170,6 +1311,7 @@ function renderCliHelp({ interactive = false } = {}) {
     "",
     "Core:",
     `- ${prefix}run <prompt>`,
+    interactive ? null : "- code-agent run-events <prompt>" ,
     `- ${prefix}${interactive ? "status" : "status"}`,
     `- ${prefix}${interactive ? "next" : "next"}`,
     interactive ? "- /help" : "- code-agent help",
@@ -1226,7 +1368,7 @@ function renderCliHelp({ interactive = false } = {}) {
     `- ${prefix}machine-state show`
   ];
 
-  return lines.join("\n");
+  return lines.filter(Boolean).join("\n");
 }
 
 async function buildCliStatusSummary(runtime) {
@@ -1238,7 +1380,7 @@ async function buildCliStatusSummary(runtime) {
 
   return {
     projectRoot: runtime.config.projectRoot,
-    sessionSummary: session.summary,
+    transcriptTurnCount: session.transcriptTurnCount || 0,
     toolPolicy: {
       strategyMode: runtime.config.runtime.strategyMode || "balanced",
       maxToolRisk: runtime.config.runtime.maxToolRisk,
@@ -1334,7 +1476,7 @@ async function renderGoalDiagnosis(runtime, { goalId = "" } = {}) {
     lines.push(`- Recent approvals: ${(dashboard.recentApprovalRequests || []).map((item) => `${item.id}(${item.status})`).join(", ")}`);
   }
 
-  return lines.join("\n");
+  return lines.filter(Boolean).join("\n");
 }
 
 async function renderNextActions(runtime) {
@@ -1350,23 +1492,25 @@ async function renderNextActions(runtime) {
     lines.push(`- ${action.label}: ${action.detail || "(none)"}${action.command ? ` [${action.command}]` : ""}`);
   }
 
-  return lines.join("\n");
+  return lines.filter(Boolean).join("\n");
 }
 
-function renderSessionHistory(turns) {
-  if (!turns || turns.length === 0) {
-    return "No session turns recorded.";
+function renderSessionHistory(transcriptTurns) {
+  if (!transcriptTurns || transcriptTurns.length === 0) {
+    return "No transcript messages recorded.";
   }
 
   return [
     "**Session History**",
-    ...turns.map((turn, index) => {
+    ...transcriptTurns.map((turn, index) => {
       return [
-        `### Turn ${turns.length - index}`,
+        `### Transcript Turn ${transcriptTurns.length - index}`,
         `- At: ${turn.createdAt}`,
-        `- Role: ${turn.role}`,
-        `- User: ${singleLine(turn.userMessage) || "(empty)"}`,
-        `- Assistant: ${singleLine(turn.response) || "(empty)"}`
+        `- Messages: ${turn.messageCount || 0}`,
+        `- Tool uses/results: ${turn.toolUseCount || 0}/${turn.toolResultCount || 0}`,
+        `- Thinking blocks: ${turn.thinkingBlockCount || 0}`,
+        `- User: ${singleLine(turn.userText) || "(empty)"}`,
+        `- Assistant: ${singleLine(turn.assistantText) || "(empty)"}`
       ].join("\n");
     })
   ].join("\n\n");

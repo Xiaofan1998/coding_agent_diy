@@ -13,6 +13,31 @@ export class ToolPolicyError extends Error {
   }
 }
 
+/**
+ * Build an enriched error message that includes recovery hints from the tool's
+ * errorRecovery contract (per agent-harness-construction skill).
+ */
+export function enrichErrorWithRecovery(tool, baseError) {
+  const recovery = tool.errorRecovery;
+  if (!recovery) {
+    return baseError;
+  }
+
+  const lines = [
+    baseError.message,
+    "",
+    "── Error Recovery ──",
+    `  Root cause hint: ${recovery.rootCauseHint}`,
+    `  Safe retry: ${recovery.safeRetry}`,
+    `  Stop condition: ${recovery.stopCondition}`
+  ];
+
+  return new ToolPolicyError(lines.join("\n"), {
+    ...(baseError.details || {}),
+    errorRecovery: recovery
+  });
+}
+
 export function getEffectiveToolPolicy(config, { isSubagent = false } = {}) {
   return {
     maxRiskLevel: isSubagent

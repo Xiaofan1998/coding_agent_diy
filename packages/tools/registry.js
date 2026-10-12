@@ -26,13 +26,13 @@ export function wrapWarning(data, { summary, next_actions, artifacts } = {}) {
   return toolResponse({ status: "warning", summary: summary || "completed with warnings", data, next_actions, artifacts });
 }
 
-export function wrapError(error, { summary, next_actions } = {}) {
-  return toolResponse({ status: "error", summary: summary || (error instanceof Error ? error.message : String(error)), data: null, next_actions });
+export function wrapError(error, { summary, data = null, next_actions } = {}) {
+  return toolResponse({ status: "error", summary: summary || (error instanceof Error ? error.message : String(error)), data, next_actions });
 }
 
 export class ToolRegistry {
   constructor(tools) {
-    this.tools = new Map(tools.map((tool) => [tool.name, tool]));
+    this.tools = new Map(tools.map((tool) => [tool.name, withToolDefaults(tool)]));
   }
 
   list() {
@@ -43,6 +43,9 @@ export class ToolRegistry {
       riskLevel: tool.riskLevel,
       requiresConfirmation: tool.requiresConfirmation || false,
       granularity: tool.granularity || "medium",
+      concurrencySafe: tool.concurrencySafeHint === true,
+      concurrencyMode: tool.concurrencySafeHint === "dynamic" ? "dynamic" : (tool.concurrencySafeHint === true ? "safe" : "exclusive"),
+      readOnly: tool.readOnlyHint === true,
       errorRecovery: tool.errorRecovery || null
     }));
   }
@@ -54,4 +57,31 @@ export class ToolRegistry {
     }
     return tool;
   }
+}
+
+function withToolDefaults(tool) {
+  const readOnlyHint = tool.readOnlyHint === true;
+  const concurrencySafeHint = tool.concurrencySafeHint === "dynamic"
+    ? "dynamic"
+    : Boolean(tool.concurrencySafeHint || readOnlyHint);
+  return {
+    ...tool,
+    readOnlyHint,
+    concurrencySafeHint,
+    isReadOnly: typeof tool.isReadOnly === "function"
+      ? tool.isReadOnly
+      : () => readOnlyHint,
+    isConcurrencySafe: typeof tool.isConcurrencySafe === "function"
+      ? tool.isConcurrencySafe
+      : (args) => {
+          if (typeof tool.isReadOnly === "function") {
+            try {
+              return Boolean(tool.isReadOnly(args));
+            } catch {
+              return false;
+            }
+          }
+          return concurrencySafeHint === true;
+        }
+  };
 }

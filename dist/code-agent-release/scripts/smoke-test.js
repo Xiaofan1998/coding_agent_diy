@@ -66,21 +66,126 @@ await fs.writeFile(
 const env = {
   ...process.env,
   CODE_AGENT_HOME: stateDir,
+  CODE_AGENT_SESSION_ID: "smoke-session",
   CODE_AGENT_USER_SKILL_DIR: userSkillDir,
   CODE_AGENT_WORKSPACE_ROOTS: workspaceRootsEnv,
   CODE_AGENT_DISABLE_DOTENV: "1",
-  OPENAI_API_KEY: "",
-  OPENAI_BASE_URL: "",
+  CODE_AGENT_DISABLE_DEFAULT_API_KEY: "1",
   OPENAI_MODEL: "",
-  ANTHROPIC_AUTH_TOKEN: "",
-  ANTHROPIC_API_KEY: "",
-  DEEPSEEK_API_KEY: "",
-  ANTHROPIC_BASE_URL: "",
-  ANTHROPIC_MODEL: ""
+  API_HOST: "",
+  API_KEY: "",
 };
+
+const generatedSessionA = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    "import { loadConfig } from './packages/shared/config.js'; console.log(loadConfig(process.cwd()).sessionId);"
+  ],
+  {
+    CODE_AGENT_HOME: path.join(stateDir, "generated-session-a"),
+    CODE_AGENT_SESSION_ID: ""
+  }
+).stdout.trim();
+const generatedSessionB = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    "import { loadConfig } from './packages/shared/config.js'; console.log(loadConfig(process.cwd()).sessionId);"
+  ],
+  {
+    CODE_AGENT_HOME: path.join(stateDir, "generated-session-b"),
+    CODE_AGENT_SESSION_ID: ""
+  }
+).stdout.trim();
+if (generatedSessionA === generatedSessionB || !generatedSessionA.startsWith("session_") || !generatedSessionB.startsWith("session_")) {
+  throw new Error("Expected default session ids to be startup-scoped and unique across processes.");
+}
+const explicitSession = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    "import { loadConfig } from './packages/shared/config.js'; console.log(loadConfig(process.cwd()).sessionId);"
+  ],
+  {
+    CODE_AGENT_HOME: path.join(stateDir, "explicit-session"),
+    CODE_AGENT_SESSION_ID: "explicit-smoke-session"
+  }
+).stdout.trim();
+if (explicitSession !== "explicit-smoke-session") {
+  throw new Error("Expected CODE_AGENT_SESSION_ID to override startup-generated session ids.");
+}
+
+
+const fileBackedMemory = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import fs from 'node:fs/promises';",
+      "import path from 'node:path';",
+      "import { loadConfig } from './packages/shared/config.js';",
+      "import { AgentRuntime } from './packages/core/runtime.js';",
+      "const config = loadConfig(process.cwd());",
+      "const runtime = await AgentRuntime.create(config);",
+      "const saved = await runtime.stateStore.saveMemory({ scope: 'project', content: 'Prefer Markdown memory files for durable project facts.', tags: ['memory', 'markdown'] });",
+      "const found = await runtime.stateStore.searchMemories('Markdown memory');",
+      "const index = await fs.readFile(path.join(config.memoryDir, 'MEMORY.md'), 'utf8');",
+      "const relevant = await runtime.stateStore.findRelevantMemories('Markdown memory', { limit: 3 });",
+      "const expectedProjectMemoryDir = process.cwd().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'project';",
+      "console.log(JSON.stringify({ savedRelativePath: saved.relativePath, foundCount: found.length, indexIncludes: index.includes('Prefer Markdown memory files'), relevantCount: relevant.length, singleMemoryFile: saved.relativePath === 'MEMORY.md', projectScopedDir: path.basename(config.memoryDir) === expectedProjectMemoryDir }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "file-memory-store") }
+);
+assertIncludes(fileBackedMemory.stdout, "\"foundCount\":1", "Expected file-backed memory search to find the saved Markdown memory.");
+assertIncludes(fileBackedMemory.stdout, "\"indexIncludes\":true", "Expected MEMORY.md to contain the saved memory entry.");
+assertIncludes(fileBackedMemory.stdout, "\"singleMemoryFile\":true", "Expected file-backed memory saves to use the project MEMORY.md file.");
+assertIncludes(fileBackedMemory.stdout, "\"relevantCount\":1", "Expected query-time memory relevance to find the saved Markdown memory.");
+assertIncludes(fileBackedMemory.stdout, "\"projectScopedDir\":true", "Expected file-backed memory to be isolated by escaped project path.");
+
+
+const contextMicrocompact = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { microcompactContext } from './packages/core/context-compactor.js';",
+      "const traces = [];",
+      "const conversation = Array.from({ length: 14 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `message-${index} ${'x'.repeat(800)}` }));",
+      "const result = microcompactContext({ systemPrompt: 'system', conversation, config: { runtime: { maxContextChars: 3000, contextCompactThresholdRatio: 0.9, contextCompactKeepRecentMessages: 4, maxCompactedContextChars: 1200, maxCompactedMessageChars: 500 }, openai: { model: 'gpt-5.5' } }, createTrace: async (payload) => traces.push(payload) });",
+      "console.log(JSON.stringify({ compacted: result.compacted, firstRole: result.conversation[0].role, includesBoundary: result.conversation[0].content.includes('microcompact boundary'), recentKept: result.conversation.at(-1).content.includes('message-13'), traceKind: traces[0]?.kind }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "context-microcompact") }
+);
+assertIncludes(contextMicrocompact.stdout, "\"compacted\":true", "Expected context microcompact to trigger over the threshold.");
+assertIncludes(contextMicrocompact.stdout, "\"includesBoundary\":true", "Expected context microcompact to insert a boundary summary message.");
+assertIncludes(contextMicrocompact.stdout, "\"recentKept\":true", "Expected context microcompact to preserve recent conversation tail.");
+assertIncludes(contextMicrocompact.stdout, "\"traceKind\":\"context_microcompact\"", "Expected context microcompact to emit a trace event.");
+
+
+const compactPromptFormatting = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { buildCompactSummaryPrompt, formatCompactSummary } from './packages/core/compact-prompt.js';",
+      "const prompt = buildCompactSummaryPrompt();",
+      "const formatted = formatCompactSummary('<analysis>scratch</analysis>\\n<summary>usable summary</summary>');",
+      "console.log(JSON.stringify({ hasAnalysisInstruction: prompt.includes('<analysis>'), hasSummaryInstruction: prompt.includes('<summary>'), formatted, stripsAnalysis: !formatted.includes('scratch') }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "compact-prompt-formatting") }
+);
+assertIncludes(compactPromptFormatting.stdout, "\"hasAnalysisInstruction\":true", "Expected compact prompt to request an analysis drafting block.");
+assertIncludes(compactPromptFormatting.stdout, "\"hasSummaryInstruction\":true", "Expected compact prompt to request a summary block.");
+assertIncludes(compactPromptFormatting.stdout, "\"formatted\":\"usable summary\"", "Expected compact formatter to keep only the summary body.");
+assertIncludes(compactPromptFormatting.stdout, "\"stripsAnalysis\":true", "Expected compact formatter to strip analysis scratchpad text.");
 
 const cliHelp = run(["./apps/cli/index.js", "help"]);
 assertIncludes(cliHelp.stdout, "goal resume <id>", "Expected CLI help to expose goal resume.");
+assertIncludes(cliHelp.stdout, "run-events <prompt>", "Expected CLI help to expose JSONL event streaming runs.");
 assertIncludes(cliHelp.stdout, "approvals retry <id>", "Expected CLI help to expose approval retry.");
 assertIncludes(cliHelp.stdout, "session history [limit]", "Expected CLI help to expose session history.");
 assertIncludes(cliHelp.stdout, "plan reset-blocked", "Expected CLI help to expose blocked-plan reset.");
@@ -91,6 +196,142 @@ assertIncludes(cliHelp.stdout, "subagents summary [limit]", "Expected CLI help t
 assertIncludes(cliHelp.stdout, "subagents set-status <id> <pending|accepted|rejected|needs_followup> [note]", "Expected CLI help to expose subagent adoption status control.");
 assertIncludes(cliHelp.stdout, "code-agent next", "Expected CLI help to expose the next-action command.");
 assertIncludes(cliHelp.stdout, "strategy set <balanced|conservative|autonomous>", "Expected CLI help to expose strategy mode switching.");
+
+const externalCwd = await fs.mkdtemp(path.join(stateDir, "external-cwd-"));
+const externalCwdRun = spawnSync(nodeBin, [path.join(root, "apps/cli/index.js"), "run", "status"], {
+  cwd: externalCwd,
+  env: {
+    ...env,
+    CODE_AGENT_HOME: path.join(stateDir, "external-cwd-state"),
+    CODE_AGENT_MOCK_MODEL: "1"
+  },
+  encoding: "utf8"
+});
+if (externalCwdRun.status !== 0) {
+  process.stdout.write(externalCwdRun.stdout || "");
+  process.stderr.write(externalCwdRun.stderr || "");
+  throw new Error("Expected CLI to run from an external cwd using agent-owned prompts.");
+}
+assertIncludes(externalCwdRun.stdout, "━━ Agent turn", "Expected external cwd CLI run to start an agent turn.");
+assertNotIncludes(externalCwdRun.stdout, "prompts/base.md", "Expected external cwd CLI run not to look for prompts inside the user project root.");
+assertNotIncludes(externalCwdRun.stdout, "unknown error", "Expected external cwd CLI run not to hide setup failures as unknown errors.");
+
+const runtimeEventStream = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { loadConfig } from './packages/shared/config.js';",
+      "import { AgentRuntime } from './packages/core/runtime.js';",
+      "const config = loadConfig(process.cwd());",
+      "const runtime = await AgentRuntime.create(config);",
+      "const types = [];",
+      "for await (const event of runtime.runUserTurnEvents('status')) { types.push(event.type); }",
+      "console.log(JSON.stringify({ types, hasTurnStart: types.includes('turn_start'), hasLoopStart: types.includes('loop_start'), hasToolStart: types.includes('tool_call_start'), hasToolEnd: types.includes('tool_call_end'), hasResult: types.includes('turn_result') }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "runtime-event-stream"), CODE_AGENT_MOCK_MODEL: "1" }
+);
+assertIncludes(runtimeEventStream.stdout, "\"hasTurnStart\":true", "Expected runtime event stream to expose turn_start.");
+assertIncludes(runtimeEventStream.stdout, "\"hasLoopStart\":true", "Expected runtime event stream to expose loop_start.");
+assertIncludes(runtimeEventStream.stdout, "\"hasToolStart\":true", "Expected runtime event stream to expose tool_call_start.");
+assertIncludes(runtimeEventStream.stdout, "\"hasToolEnd\":true", "Expected runtime event stream to expose tool_call_end.");
+assertIncludes(runtimeEventStream.stdout, "\"hasResult\":true", "Expected runtime event stream to expose final turn_result.");
+
+
+const concurrentToolExecution = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { runAgentLoop } from './packages/core/agent-loop.js';",
+      "import { ToolRegistry, wrapSuccess } from './packages/tools/registry.js';",
+      "const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));",
+      "const events = [];",
+      "const started = {};",
+      "const ended = {};",
+      "const tools = new ToolRegistry([",
+      "  { name: 'safe_a', description: 'safe a', riskLevel: 'safe', readOnlyHint: true, concurrencySafeHint: true, inputSchema: { type: 'object', properties: {}, additionalProperties: false }, execute: async () => wrapSuccess('a') },",
+      "  { name: 'safe_b', description: 'safe b', riskLevel: 'safe', readOnlyHint: true, concurrencySafeHint: true, inputSchema: { type: 'object', properties: {}, additionalProperties: false }, execute: async () => wrapSuccess('b') },",
+      "  { name: 'unsafe_c', description: 'unsafe c', riskLevel: 'caution', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, execute: async () => wrapSuccess('c') }",
+      "]);",
+      "let calls = 0;",
+      "const modelClient = { async createResponse() { calls += 1; return calls === 1 ? { id: 'r1', outputText: '', thinkingBlocks: [], meta: { provider: 'test' }, functionCalls: [",
+      "  { id: 'a', callId: 'a', name: 'safe_a', arguments: {} },",
+      "  { id: 'b', callId: 'b', name: 'safe_b', arguments: {} },",
+      "  { id: 'c', callId: 'c', name: 'unsafe_c', arguments: {} }",
+      "] } : { id: 'r2', outputText: 'done', thinkingBlocks: [], meta: { provider: 'test' }, functionCalls: [] }; } };",
+      "const result = await runAgentLoop({",
+      "  modelClient, systemPrompt: 'system', conversation: [{ role: 'user', content: 'go' }], toolRegistry: tools,",
+      "  config: { runtime: { maxToolOutputChars: 12000, maxRepeatedToolCallStreak: 10 }, openai: { model: 'test' } },",
+      "  suggestedFirstTools: [], createTrace: async (event) => events.push({ trace: event }), onEvent: async (event) => events.push(event),",
+      "  executeTool: async (name, args) => { started[name] = Date.now(); await sleep(name === 'unsafe_c' ? 20 : 80); ended[name] = Date.now(); return tools.get(name).execute(args); }",
+      "});",
+      "const batchStarts = events.filter((event) => event.type === 'tool_batch_start');",
+      "const transcriptToolUses = result.conversation.flatMap((message) => Array.isArray(message.content) ? message.content.filter((block) => block.type === 'tool_use').map((block) => block.name) : []);",
+      "console.log(JSON.stringify({ final: result.finalMessage, batchStarts: batchStarts.map((event) => ({ mode: event.mode, count: event.count, toolNames: event.toolNames })), safeOverlap: started.safe_b < ended.safe_a, unsafeAfterSafe: started.unsafe_c >= Math.max(ended.safe_a, ended.safe_b), transcriptToolUses }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "concurrent-tool-execution") }
+);
+assertIncludes(concurrentToolExecution.stdout, '"mode":"parallel"', "Expected consecutive concurrency-safe tools to run as a parallel batch.");
+assertIncludes(concurrentToolExecution.stdout, '"mode":"serial"', "Expected unsafe tools to run as a serial batch.");
+assertIncludes(concurrentToolExecution.stdout, '"safeOverlap":true', "Expected concurrency-safe tools to overlap in execution.");
+assertIncludes(concurrentToolExecution.stdout, '"unsafeAfterSafe":true', "Expected unsafe tool execution to wait for prior safe batch.");
+assertIncludes(concurrentToolExecution.stdout, '"transcriptToolUses":["safe_a","safe_b","unsafe_c"]', "Expected transcript tool_use order to remain stable after parallel execution.");
+
+const cliRenderedEventStream = runWithEnv(
+  ["./apps/cli/index.js", "run", "status"],
+  { CODE_AGENT_HOME: path.join(stateDir, "cli-rendered-event-stream"), CODE_AGENT_MOCK_MODEL: "1" }
+);
+assertIncludes(cliRenderedEventStream.stdout, "━━ Agent turn", "Expected CLI run to render the event stream boundary.");
+assertIncludes(cliRenderedEventStream.stdout, "⇢ model request", "Expected CLI run to render model request progress.");
+assertIncludes(cliRenderedEventStream.stdout, "╭─ tool", "Expected CLI run to render tool call topology.");
+assertIncludes(cliRenderedEventStream.stdout, "━━ Final answer", "Expected CLI run to visually separate the final answer.");
+const transcriptPersistence = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { loadConfig } from './packages/shared/config.js';",
+      "import { AgentRuntime } from './packages/core/runtime.js';",
+      "const config = loadConfig(process.cwd());",
+      "const runtime = await AgentRuntime.create(config);",
+      "await runtime.runUserTurn('transcript tool call smoke');",
+      "const messages = await runtime.stateStore.listTranscriptMessages(20, 'asc');",
+      "console.log(JSON.stringify(messages.map((m) => m.messageKind)));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "transcript-persistence"), CODE_AGENT_MOCK_MODEL: "1" }
+);
+assertIncludes(transcriptPersistence.stdout, "\"tool_use\"", "Expected transcript persistence to store assistant tool_use messages.");
+assertIncludes(transcriptPersistence.stdout, "\"tool_result\"", "Expected transcript persistence to store user tool_result messages.");
+const toolAwareMicrocompact = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import { sanitizeTranscriptMessages } from './packages/core/transcript-utils.js';",
+      "import { microcompactContext } from './packages/core/context-compactor.js';",
+      "const conversation = [",
+      "  { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'missing', content: 'orphan' }] },",
+      "  { role: 'assistant', content: [{ type: 'tool_use', id: 'a', name: 'run_shell', input: { command: 'echo hi' } }] },",
+      "  { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', content: 'hi' }] },",
+      "  { role: 'assistant', content: 'done' },",
+      "  { role: 'assistant', content: [{ type: 'tool_use', id: 'b', name: 'read_file', input: { path: 'x' } }] },",
+      "  { role: 'assistant', content: [{ type: 'thinking_summary', text: 'orphan thought' }] }",
+      "];",
+      "const sanitized = sanitizeTranscriptMessages(conversation);",
+      "const compact = microcompactContext({ systemPrompt: 'x', conversation, config: { openai: { model: '1k' }, runtime: { maxContextChars: 120, contextCompactThresholdRatio: 0.5, contextCompactKeepRecentMessages: 1, maxCompactedContextChars: 2000, maxCompactedMessageChars: 500 } } });",
+      "console.log(JSON.stringify({ sanitized, compact: compact.conversation }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "tool-aware-microcompact") }
+);
+assertIncludes(toolAwareMicrocompact.stdout, "\"tool_use_id\":\"a\"", "Expected tool-aware microcompact to preserve matched tool_result ids.");
+assertNotIncludes(toolAwareMicrocompact.stdout, "\"tool_use_id\":\"missing\"", "Expected orphan tool_result to be removed before compacting.");
+assertNotIncludes(toolAwareMicrocompact.stdout, "\"id\":\"b\"", "Expected unresolved tool_use to be removed before compacting.");
+assertNotIncludes(toolAwareMicrocompact.stdout, "orphan thought", "Expected thinking-only orphan messages to be removed before compacting.");
 const blockedGoalAudit = runWithEnv(
   [
     "--input-type=module",
@@ -125,12 +366,7 @@ const blockedGoalAudit = runWithEnv(
     CODE_AGENT_USER_SKILL_DIR: userSkillDir,
     CODE_AGENT_WORKSPACE_ROOTS: workspaceRootsEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(blockedGoalAudit.stdout, "Goal governance update:", "Expected repeated blockers to append a governance update to the user-visible response.");
@@ -144,12 +380,7 @@ const blockedGoalDiagnose = runWithEnv(
     CODE_AGENT_USER_SKILL_DIR: userSkillDir,
     CODE_AGENT_WORKSPACE_ROOTS: workspaceRootsEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(blockedGoalDiagnose.stdout, "Goal Diagnosis", "Expected goal diagnose to render a human-readable diagnosis header.");
@@ -201,12 +432,7 @@ const multiWorkspaceRepoContext = runWithEnv(
   {
     CODE_AGENT_WORKSPACE_ROOTS: peerWorkspaceEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(multiWorkspaceRepoContext.stdout, "peer-workspace-smoke/peer-module.js", "Expected repo context selection to include source files from a secondary workspace root.");
@@ -215,12 +441,7 @@ const workspaceSkillsList = runWithEnv(
   {
     CODE_AGENT_WORKSPACE_ROOTS: peerWorkspaceEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(workspaceSkillsList.stdout, "peer-skill", "Expected skills list to include skills discovered from a secondary workspace root.");
@@ -230,12 +451,7 @@ const peerWorkspaceReadTurn = runWithEnv(
     CODE_AGENT_HOME: path.join(stateDir, "peer-read"),
     CODE_AGENT_WORKSPACE_ROOTS: peerWorkspaceEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(peerWorkspaceReadTurn.stdout, "peerValue", "Expected fallback read flow to access files from a secondary workspace root.");
@@ -245,12 +461,7 @@ const codeSummaryFallback = runWithEnv(
     CODE_AGENT_HOME: path.join(stateDir, "peer-summary"),
     CODE_AGENT_WORKSPACE_ROOTS: peerWorkspaceEnv,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(codeSummaryFallback.stdout, "**Code Summary**", "Expected fallback mode to support explicit code summary requests.");
@@ -302,28 +513,33 @@ const openaiClientParsing = runWithEnv(
     "--input-type=module",
     "--eval",
     [
-      "global.fetch = async () => ({",
-      "  ok: true,",
-      "  async json() {",
-      "    return {",
-      "      id: 'resp_parse',",
-      "      output: [",
-      "        { type: 'message', content: [",
-      "          { type: 'output_text', text: 'Model says hi.' },",
-      "          { type: 'function_call', id: 'fc_nested', call_id: 'call_nested', name: 'get_dashboard_summary', arguments: '{}' }",
-      "        ] },",
-      "        { type: 'function_call', id: 'fc_top', call_id: 'call_top', name: 'get_plan_summary', arguments: '{}' }",
-      "      ]",
-      "    };",
-      "  }",
-      "});",
+      "global.fetch = async (url, options) => {",
+      "  globalThis.__lastPayload = JSON.parse(options.body);",
+      "  return {",
+      "    ok: true,",
+      "    status: 200,",
+      "    headers: { get(name) { return name === 'x-request-id' ? 'chat_req_1' : null; } },",
+      "    async json() {",
+      "      return {",
+      "        id: 'chatcmpl_parse',",
+      "        choices: [{ message: {",
+      "          content: 'Model says hi.',",
+      "          tool_calls: [",
+      "            { id: 'call_dashboard', type: 'function', function: { name: 'get_dashboard_summary', arguments: '{}' } },",
+      "            { id: 'call_plan', type: 'function', function: { name: 'get_plan_summary', arguments: '{}' } }",
+      "          ]",
+      "        } }]",
+      "      };",
+      "    }",
+      "  };",
+      "};",
       "const { loadConfig } = await import('./packages/shared/config.js');",
       "const { OpenAIResponsesClient } = await import('./packages/llm/openai-responses.js');",
       "const config = loadConfig(process.cwd());",
       "config.openai.apiKey = 'smoke-key';",
       "const client = new OpenAIResponsesClient(config);",
       "const result = await client.createResponse({ instructions: 'hi', conversationItems: [{ role: 'user', content: 'hello' }], toolDefinitions: [], previousResponseId: null, inputItems: null });",
-      "console.log(JSON.stringify(result));"
+      "console.log(JSON.stringify({ ...result, sentMaxCompletionTokens: globalThis.__lastPayload.max_completion_tokens, sentMaxTokens: globalThis.__lastPayload.max_tokens ?? null }));"
     ].join(" ")
   ],
   {
@@ -331,46 +547,11 @@ const openaiClientParsing = runWithEnv(
     CODE_AGENT_USER_SKILL_DIR: userSkillDir
   }
 );
-assertIncludes(openaiClientParsing.stdout, "\"outputText\":\"Model says hi.\"", "Expected Responses client to recover text from nested output content.");
-assertIncludes(openaiClientParsing.stdout, "\"name\":\"get_dashboard_summary\"", "Expected Responses client to recover nested function calls.");
-assertIncludes(openaiClientParsing.stdout, "\"name\":\"get_plan_summary\"", "Expected Responses client to recover top-level function calls.");
-const anthropicClientParsing = runWithEnv(
-  [
-    "--input-type=module",
-    "--eval",
-    [
-      "global.fetch = async () => ({",
-      "  ok: true,",
-      "  status: 200,",
-      "  headers: { get(name) { return name === 'x-request-id' ? 'anth_req_1' : null; } },",
-      "  async json() {",
-      "    return {",
-      "      id: 'msg_parse',",
-      "      content: [",
-      "        { type: 'text', text: 'Anthropic says hi.' },",
-      "        { type: 'tool_use', id: 'tool_1', name: 'get_dashboard_summary', input: {} }",
-      "      ]",
-      "    };",
-      "  }",
-      "});",
-      "const { loadConfig } = await import('./packages/shared/config.js');",
-      "const { AnthropicMessagesClient } = await import('./packages/llm/anthropic-messages.js');",
-      "const config = loadConfig(process.cwd());",
-      "config.anthropic.authToken = 'smoke-anthropic';",
-      "config.anthropic.baseUrl = 'https://api.deepseek.com/anthropic';",
-      "config.anthropic.model = 'deepseek-v4-pro';",
-      "const client = new AnthropicMessagesClient(config);",
-      "const result = await client.createResponse({ instructions: 'hi', conversationItems: [{ role: 'user', content: 'hello' }], toolDefinitions: [], previousResponseId: null, inputItems: null });",
-      "console.log(JSON.stringify(result));"
-    ].join(" ")
-  ],
-  {
-    CODE_AGENT_HOME: path.join(stateDir, "anthropic-client-parse"),
-    CODE_AGENT_USER_SKILL_DIR: userSkillDir
-  }
-);
-assertIncludes(anthropicClientParsing.stdout, "\"outputText\":\"Anthropic says hi.\"", "Expected Anthropic-compatible client to recover text output.");
-assertIncludes(anthropicClientParsing.stdout, "\"name\":\"get_dashboard_summary\"", "Expected Anthropic-compatible client to recover tool_use blocks.");
+assertIncludes(openaiClientParsing.stdout, "\"outputText\":\"Model says hi.\"", "Expected chat completions client to recover text from message content.");
+assertIncludes(openaiClientParsing.stdout, "\"name\":\"get_dashboard_summary\"", "Expected chat completions client to recover function calls.");
+assertIncludes(openaiClientParsing.stdout, "\"name\":\"get_plan_summary\"", "Expected chat completions client to recover function calls.");
+assertIncludes(openaiClientParsing.stdout, "\"sentMaxCompletionTokens\":32000", "Expected chat completions client to send max_completion_tokens.");
+assertIncludes(openaiClientParsing.stdout, "\"sentMaxTokens\":null", "Expected chat completions client not to send unsupported max_tokens for gpt-5.5.");
 const webSearchTool = runWithEnv(
   [
     "--input-type=module",
@@ -393,12 +574,7 @@ const webSearchTool = runWithEnv(
   {
     CODE_AGENT_HOME: path.join(stateDir, "web-search-tool"),
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(webSearchTool.stdout, "\"queryProvider\":\"duckduckgo-html\"", "Expected the web-search tool to report its provider.");
@@ -427,12 +603,7 @@ const fetchUrlTool = runWithEnv(
   {
     CODE_AGENT_HOME: path.join(stateDir, "fetch-url-tool"),
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(fetchUrlTool.stdout, "\"contentType\":\"text/html; charset=utf-8\"", "Expected fetch_url to preserve response content type.");
@@ -471,15 +642,15 @@ const agentLoopFollowUp = runWithEnv(
       "const { runAgentLoop } = await import('./packages/core/agent-loop.js');",
       "const config = { runtime: { maxStepsPerTurn: 6, maxToolOutputChars: 2000, enforceSuggestedFirstTool: false }, openai: { model: 'mock-model' } };",
       "const modelClient = {",
-      "  supportsResponseContinuation: true,",
-      "  async createResponse({ conversationItems = [], inputItems = null }) {",
+      "  async createResponse({ conversationItems = [] }) {",
       "    const items = conversationItems || [];",
       "    const hasFollowUp = items.some((item) => String(item.content || '').includes('follow-up request'));",
-      "    if (inputItems?.length) {",
-      "      return { id: 'resp_tool_done', outputText: 'First tool phase completed.', functionCalls: [], meta: { provider: 'mock' } };",
-      "    }",
+      "    const hasToolResult = items.some((item) => Array.isArray(item.content) && item.content.some((block) => block?.type === 'tool_result'));",
       "    if (hasFollowUp) {",
       "      return { id: 'resp_followup', outputText: 'Handled follow-up request.', functionCalls: [], meta: { provider: 'mock' } };",
+      "    }",
+      "    if (hasToolResult) {",
+      "      return { id: 'resp_tool_done', outputText: 'First tool phase completed.', functionCalls: [], meta: { provider: 'mock' } };",
       "    }",
       "    return { id: 'resp_1', outputText: '', functionCalls: [{ id: 'tool_1', callId: 'tool_1', name: 'list_files', arguments: {} }], meta: { provider: 'mock' } };",
       "  }",
@@ -511,12 +682,7 @@ const agentLoopFollowUp = runWithEnv(
   {
     CODE_AGENT_HOME: path.join(stateDir, "agent-loop-follow-up"),
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(agentLoopFollowUp.stdout, "\"finalMessage\":\"Handled follow-up request.\"", "Expected agent loop to continue after injecting follow-up messages.");
@@ -530,10 +696,9 @@ const agentLoopNoHardStepLimit = runWithEnv(
       "const config = { runtime: { maxStepsPerTurn: 3, maxRepeatedToolCallStreak: 50, maxToolOutputChars: 2000, enforceSuggestedFirstTool: false }, openai: { model: 'mock-model' } };",
       "let iteration = 0;",
       "const modelClient = {",
-      "  supportsResponseContinuation: true,",
-      "  async createResponse({ inputItems = null }) {",
-      "    if (inputItems?.length) {",
-      "      iteration += 1;",
+      "  async createResponse() {",
+      "    iteration += 1;",
+      "    if (iteration > 1) {",
       "      if (iteration >= 8) {",
       "        return { id: `resp_done_${iteration}`, outputText: 'Completed after many tool steps.', functionCalls: [], meta: { provider: 'mock' } };",
       "      }",
@@ -561,12 +726,7 @@ const agentLoopNoHardStepLimit = runWithEnv(
   {
     CODE_AGENT_HOME: path.join(stateDir, "agent-loop-no-hard-step-limit"),
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(agentLoopNoHardStepLimit.stdout, "\"finalMessage\":\"Completed after many tool steps.\"", "Expected agent loop to continue beyond the legacy step limit.");
@@ -579,11 +739,11 @@ const agentLoopStallGuard = runWithEnv(
       "const config = { runtime: { maxRepeatedToolCallStreak: 3, maxToolOutputChars: 2000, enforceSuggestedFirstTool: false }, openai: { model: 'mock-model' } };",
       "let afterWarning = false;",
       "const modelClient = {",
-      "  supportsResponseContinuation: true,",
-      "  async createResponse({ conversationItems = [], inputItems = null }) {",
+      "  async createResponse({ conversationItems = [] }) {",
       "    const hasWarning = (conversationItems || []).some((item) => String(item.content || '').includes('Loop guard:'));",
       "    if (hasWarning) afterWarning = true;",
-      "    if (inputItems?.length || afterWarning) {",
+      "    const hasToolResult = (conversationItems || []).some((item) => Array.isArray(item.content) && item.content.some((block) => block?.type === 'tool_result'));",
+      "    if (hasToolResult || afterWarning) {",
       "      return { id: `resp_repeat_${afterWarning ? 'warn' : 'loop'}`, outputText: '', functionCalls: [{ id: 'repeat_tool', callId: 'repeat_tool', name: 'list_files', arguments: {} }], meta: { provider: 'mock' } };",
       "    }",
       "    return { id: 'resp_start', outputText: '', functionCalls: [{ id: 'repeat_tool', callId: 'repeat_tool', name: 'list_files', arguments: {} }], meta: { provider: 'mock' } };",
@@ -609,12 +769,7 @@ const agentLoopStallGuard = runWithEnv(
   {
     CODE_AGENT_HOME: path.join(stateDir, "agent-loop-stall-guard"),
     CODE_AGENT_DISABLE_DOTENV: "1",
-    OPENAI_API_KEY: "",
-    OPENAI_BASE_URL: "",
     OPENAI_MODEL: "",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(agentLoopStallGuard.stdout, "Stopped because the loop appeared stuck repeating tool", "Expected repeated identical tool calls to terminate via stall detection.");
@@ -635,7 +790,7 @@ const openaiClientRetry = runWithEnv(
       "    status: 200,",
       "    headers: { get(name) { return name === 'x-request-id' ? 'req_retry_123' : null; } },",
       "    async json() {",
-      "      return { id: 'resp_retry', output_text: 'Recovered after retry.', output: [] };",
+      "      return { id: 'chatcmpl_retry', choices: [{ message: { content: 'Recovered after retry.' } }] };",
       "    }",
       "  };",
       "};",
@@ -654,9 +809,9 @@ const openaiClientRetry = runWithEnv(
     CODE_AGENT_USER_SKILL_DIR: userSkillDir
   }
 );
-assertIncludes(openaiClientRetry.stdout, "\"attempts\":2", "Expected Responses client to retry once after a retryable HTTP failure.");
-assertIncludes(openaiClientRetry.stdout, "\"outputText\":\"Recovered after retry.\"", "Expected Responses client to succeed after retrying a temporary failure.");
-assertIncludes(openaiClientRetry.stdout, "\"requestId\":\"req_retry_123\"", "Expected Responses client to expose provider request ids in metadata.");
+assertIncludes(openaiClientRetry.stdout, "\"attempts\":2", "Expected chat completions client to retry once after a retryable HTTP failure.");
+assertIncludes(openaiClientRetry.stdout, "\"outputText\":\"Recovered after retry.\"", "Expected chat completions client to succeed after retrying a temporary failure.");
+assertIncludes(openaiClientRetry.stdout, "\"requestId\":\"req_retry_123\"", "Expected chat completions client to expose provider request ids in metadata.");
 const modelTraceMetadata = runWithEnv(
   [
     "--input-type=module",
@@ -673,7 +828,7 @@ const modelTraceMetadata = runWithEnv(
       "    status: 200,",
       "    headers: { get(name) { return name === 'x-request-id' ? 'req_trace_456' : null; } },",
       "    async json() {",
-      "      return { id: 'resp_trace', output_text: 'trace ok', output: [] };",
+      "      return { id: 'chatcmpl_trace', choices: [{ message: { content: 'trace ok' } }] };",
       "    }",
       "  };",
       "};",
@@ -692,12 +847,9 @@ const modelTraceMetadata = runWithEnv(
     CODE_AGENT_HOME: path.join(stateDir, "openai-trace-metadata"),
     CODE_AGENT_USER_SKILL_DIR: userSkillDir,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
-assertIncludes(modelTraceMetadata.stdout, "\"provider\":\"openai-responses\"", "Expected model_response traces to include provider metadata.");
+assertIncludes(modelTraceMetadata.stdout, "\"provider\":\"openai-chat-completions\"", "Expected model_response traces to include provider metadata.");
 assertIncludes(modelTraceMetadata.stdout, "\"providerRequestId\":\"req_trace_456\"", "Expected model_response traces to include provider request ids.");
 assertIncludes(modelTraceMetadata.stdout, "\"retryCount\":1", "Expected model_response traces to expose retry counts.");
 const runtimeFallbackAfterModelError = runWithEnv(
@@ -719,9 +871,6 @@ const runtimeFallbackAfterModelError = runWithEnv(
     CODE_AGENT_HOME: path.join(stateDir, "runtime-fallback-after-model-error"),
     CODE_AGENT_USER_SKILL_DIR: userSkillDir,
     CODE_AGENT_DISABLE_DOTENV: "1",
-    ANTHROPIC_AUTH_TOKEN: "",
-    ANTHROPIC_BASE_URL: "",
-    ANTHROPIC_MODEL: ""
   }
 );
 assertIncludes(runtimeFallbackAfterModelError.stdout, "Model request failed, so the agent used local fallback mode instead:", "Expected runtime to degrade gracefully when the model request fails.");
@@ -741,7 +890,7 @@ assertIncludes(resetBlockedPlan.stdout, "\"status\": \"skipped\"", "Expected pla
 const planSummaryBeforeExecute = run(["./apps/cli/index.js", "plan", "summary"]);
 assertIncludes(planSummaryBeforeExecute.stdout, "\"planItemCount\":", "Expected plan summary to expose the number of plan items.");
 const sessionShow = run(["./apps/cli/index.js", "session", "show"]);
-assertIncludes(sessionShow.stdout, "\"turnCount\":", "Expected session show to expose the current turn count.");
+assertIncludes(sessionShow.stdout, "\"transcriptTurnCount\":", "Expected session show to expose the current transcript turn count.");
 const sessionHistory = run(["./apps/cli/index.js", "session", "history", "2"]);
 assertIncludes(sessionHistory.stdout, "Session History", "Expected session history to render a readable history header.");
 assertIncludes(sessionHistory.stdout, "Assistant:", "Expected session history to include assistant replies.");
@@ -778,7 +927,7 @@ assertIncludes(subagentSummary.stdout, "\"totalCount\":", "Expected subagent sum
 assertIncludes(subagentSummary.stdout, "\"countsByStatus\":", "Expected subagent summary to group records by status.");
 assertIncludes(subagentSummary.stdout, "\"countsByReviewStatus\":", "Expected subagent summary to group records by review/adoption status.");
 const statusAfterRun = run(["./apps/cli/index.js", "status"]);
-assertIncludes(statusAfterRun.stdout, "## Working Memory", "Expected structured working memory summary after a run.");
+assertIncludes(statusAfterRun.stdout, "transcriptTurnCount", "Expected status output to expose transcript-backed session state after a run.");
 assertIncludes(statusAfterRun.stdout, "\"get_plan_summary\"", "Expected status recommendations to expose the linked plan summary tool.");
 run(["./apps/cli/index.js", "plan", "export", "smoke test plan"]);
 run(["./apps/cli/index.js", "plan", "execute"]);
@@ -793,7 +942,7 @@ if (!subagentId) {
   throw new Error("Expected at least one subagent record after plan execution.");
 }
 const subagentRecord = run(["./apps/cli/index.js", "subagents", "show", subagentId]);
-assertIncludes(subagentRecord.stdout, "Relevant repo context:", "Expected structured subagent context package.");
+assertIncludes(subagentRecord.stdout, "Repository source snippets are not preloaded", "Expected subagent context to avoid preloaded repository snippets.");
 run(["./apps/cli/index.js", "reviews", "run", "plan"]);
 run(["./apps/cli/index.js", "reviews", "run", "repo"]);
 run(["./apps/cli/index.js", "reviews", "run", "code"]);
@@ -1400,6 +1549,12 @@ function assertMockApprovalFirstTool(stdout) {
 
 function assertIncludes(stdout, needle, message) {
   if (!stdout.includes(needle)) {
+    throw new Error(message);
+  }
+}
+
+function assertNotIncludes(stdout, needle, message) {
+  if (stdout.includes(needle)) {
     throw new Error(message);
   }
 }

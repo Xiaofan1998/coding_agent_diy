@@ -22,7 +22,7 @@ export class LocalFallbackAgent {
     }
 
     if (matchesAny(lowered, ["list files", "project structure", "项目结构", "列出文件", "目录"])) {
-      const result = await this.executeTool("list_files", { path: ".", limit: 200 });
+      const result = unwrapToolData(await this.executeTool("list_files", { path: ".", limit: 200 }));
       return {
         message: renderSection("Project Files", toBulletList(result.slice(0, 80)))
       };
@@ -86,9 +86,9 @@ export class LocalFallbackAgent {
     }
 
     if (matchesAny(lowered, ["session", "history", "会话", "历史"])) {
-      const turns = await this.stateStore.listTurns(5, "desc");
+      const transcriptTurns = await this.stateStore.listTranscriptTurns(5, "desc");
       return {
-        message: renderSection("Session History", formatSessionHistory(turns))
+        message: renderSection("Session History", formatSessionHistory(transcriptTurns))
       };
     }
 
@@ -104,7 +104,7 @@ export class LocalFallbackAgent {
 
     const readPath = detectFilePath(input);
     if (readPath && matchesAny(lowered, ["read", "show", "查看", "读取", "打开"])) {
-      const content = await this.executeTool("read_file", { path: readPath, startLine: 1, endLine: 200 });
+      const content = unwrapToolData(await this.executeTool("read_file", { path: readPath, startLine: 1, endLine: 200 }));
       return {
         message: `Read \`${readPath}\`.\n\n\`\`\`\n${content}\n\`\`\``
       };
@@ -119,7 +119,7 @@ export class LocalFallbackAgent {
     if (hasExplicitSearchIntent(input, lowered)) {
       const pattern = extractSearchPattern(input);
       if (pattern) {
-        const result = await this.executeTool("search_files", { pattern, path: ".", maxResults: 50 });
+        const result = unwrapToolData(await this.executeTool("search_files", { pattern, path: ".", maxResults: 50 }));
         return {
           message: renderSection("Search Results", result || "(no matches)")
         };
@@ -143,7 +143,7 @@ export class LocalFallbackAgent {
     }
 
     if (matchesAny(lowered, ["reset blocked plan", "retry blocked plan", "重试阻塞计划", "重置阻塞计划"])) {
-      const result = await this.executeTool("reset_blocked_plan_items", {});
+      const result = unwrapToolData(await this.executeTool("reset_blocked_plan_items", {}));
       return {
         message: renderSection(
           "Plan Reset",
@@ -179,7 +179,7 @@ export class LocalFallbackAgent {
         "- exporting review reports into the configured artifact root",
         "- running a delivery workflow that chains execution, artifacts, and reviews",
         "",
-        `Session summary: ${session.summary || "(empty)"}`,
+        `Transcript turns: ${session.transcriptTurnCount || 0}`,
         `Top-level files: ${repoSnapshot.files.join(", ") || "(none)"}`,
         `Git repo: ${repoSnapshot.isGitRepo ? "yes" : "no"}`,
         `Saved plan items: ${(await this.stateStore.getPlanItems()).length}`,
@@ -221,7 +221,7 @@ export class LocalFallbackAgent {
     const lowered = objective.toLowerCase();
 
     if (lowered.includes("identify the files") || lowered.includes("modules")) {
-      const files = await this.executeTool("list_files", { path: ".", limit: 80 });
+      const files = unwrapToolData(await this.executeTool("list_files", { path: ".", limit: 80 }));
       return {
         message: [
           `Scoped subagent summary for: ${objective}`,
@@ -234,9 +234,9 @@ export class LocalFallbackAgent {
 
     if (lowered.includes("verification")) {
       try {
-        const result = await this.executeTool("run_shell", {
+        const result = unwrapToolData(await this.executeTool("run_shell", {
           command: "if [ -f ./scripts/check.js ]; then node ./scripts/check.js; else echo 'No verification script found.'; fi"
-        });
+        }));
         return {
           message: [
             `Scoped subagent summary for: ${objective}`,
@@ -273,6 +273,13 @@ export class LocalFallbackAgent {
       ].join("\n")
     };
   }
+}
+
+function unwrapToolData(result) {
+  if (result && typeof result === "object" && Object.hasOwn(result, "data") && Object.hasOwn(result, "status")) {
+    return result.data;
+  }
+  return result;
 }
 
 function extractSearchPattern(input) {
@@ -382,27 +389,15 @@ function hasCodeSummaryIntent(lowered) {
 
 function formatCodeSummary(repoSnapshot, input) {
   const requestedPath = detectFilePath(input);
-  const relevantEntries = (repoSnapshot.relevantContext || []).slice(0, 4);
   const lines = [
     `Workspace roots: ${(repoSnapshot.workspaceRoots || [repoSnapshot.projectRoot]).join(", ")}`,
-    `Relevant files: ${(repoSnapshot.relevantFiles || []).join(", ") || "(none)"}`
+    `Top-level files: ${(repoSnapshot.files || []).join(", ") || "(none)"}`,
+    `Sample source files: ${(repoSnapshot.sourceFiles || []).slice(0, 30).join(", ") || "(none)"}`,
+    "Repository source snippets are not preloaded. Use search/read tools for exact code content."
   ];
 
   if (requestedPath) {
     lines.push(`Requested path hint: ${requestedPath}`);
-  }
-
-  for (const entry of relevantEntries) {
-    lines.push(`- ${entry.path}${entry.toolPath && entry.toolPath !== entry.path ? ` (tool path: ${entry.toolPath})` : ""}`);
-  }
-
-  if (relevantEntries.length > 0) {
-    lines.push("");
-    lines.push("Key snippets:");
-    for (const entry of relevantEntries) {
-      lines.push(`### ${entry.path}`);
-      lines.push(entry.snippet);
-    }
   }
 
   return lines.join("\n");
@@ -483,16 +478,16 @@ function formatGovernanceSummary(summary) {
   ].join(" ");
 }
 
-function formatSessionHistory(turns) {
-  if (!turns || turns.length === 0) {
+function formatSessionHistory(transcriptTurns) {
+  if (!transcriptTurns || transcriptTurns.length === 0) {
     return "(none)";
   }
 
-  return turns.map((turn) => {
+  return transcriptTurns.map((turn) => {
     return [
-      `- ${turn.createdAt} [${turn.role}]`,
-      `  user: ${clipLine(turn.userMessage)}`,
-      `  assistant: ${clipLine(turn.response)}`
+      `- ${turn.createdAt} [messages=${turn.messageCount || 0}, tools=${turn.toolUseCount || 0}/${turn.toolResultCount || 0}, thinking=${turn.thinkingBlockCount || 0}]`,
+      `  user: ${clipLine(turn.userText)}`,
+      `  assistant: ${clipLine(turn.assistantText)}`
     ].join("\n");
   }).join("\n");
 }
@@ -507,7 +502,7 @@ function clipLine(value, maxChars = 140) {
 
 function buildFallbackModeNotice(config) {
   if (!config?.openai?.apiKey) {
-    return "OPENAI_API_KEY is not set, so the agent is using local fallback mode.";
+    return "API_KEY is not set, so the agent is using local fallback mode.";
   }
   return "Model-backed execution is currently unavailable, so the agent is using local fallback mode.";
 }

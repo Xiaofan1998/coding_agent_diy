@@ -1,19 +1,77 @@
 import readline from "node:readline";
 
+const TOP_LEVEL_SLASH_COMMANDS = Object.freeze([
+  {
+    kind: "command",
+    name: "skill",
+    command: "skill",
+    description: "Choose a skill, then type the request that should use it."
+  },
+  {
+    kind: "command",
+    name: "goal",
+    command: "goal",
+    description: "Create, inspect, resume, complete, or cancel a persistent goal."
+  }
+]);
+
+const GOAL_COMMANDS = Object.freeze([
+  { kind: "goal", name: "create", command: "create", description: "Create a goal and enter goal mode for following prompts." },
+  { kind: "goal", name: "show", command: "show", description: "Show the active goal, or a goal by id." },
+  { kind: "goal", name: "list", command: "list", description: "List recent goals." },
+  { kind: "goal", name: "resume", command: "resume", description: "Resume a goal by id and enter goal mode." },
+  { kind: "goal", name: "complete", command: "complete", description: "Mark the active goal, or a goal by id, complete." },
+  { kind: "goal", name: "cancel", command: "cancel", description: "Cancel the active goal, or a goal by id." },
+  { kind: "goal", name: "diagnose", command: "diagnose", description: "Explain current goal progress and blockers." }
+]);
+
 export function getSkillSuggestions(inputValue, skills, limit = 8) {
   const query = normalizeSkillQuery(inputValue);
   if (query === null) {
     return [];
   }
 
-  return (Array.isArray(skills) ? skills : [])
-    .map((skill) => ({
+  return rankSkills(skills, query, limit);
+}
+
+export function getSlashSuggestions(inputValue, skills, limit = 8) {
+  const state = parseSlashInput(inputValue);
+  if (!state) {
+    return [];
+  }
+
+  if (state.mode === "top") {
+    return TOP_LEVEL_SLASH_COMMANDS
+      .map((command, order) => ({
+        ...command,
+        order,
+        score: scoreCommand(command, state.query)
+      }))
+      .filter((command) => state.query ? command.score > 0 : true)
+      .sort((a, b) => b.score - a.score || a.order - b.order)
+      .slice(0, limit);
+  }
+
+  if (state.mode === "skill") {
+    return rankSkills(skills, state.query, limit).map((skill) => ({
       ...skill,
-      score: scoreSkill(skill, query)
-    }))
-    .filter((skill) => query ? skill.score > 0 : true)
-    .sort((a, b) => b.score - a.score || String(a.name || "").localeCompare(String(b.name || "")))
-    .slice(0, limit);
+      kind: "skill"
+    }));
+  }
+
+  if (state.mode === "goal") {
+    const commandQuery = firstToken(state.query).toLowerCase();
+    return GOAL_COMMANDS
+      .map((command) => ({
+        ...command,
+        score: scoreCommand(command, commandQuery)
+      }))
+      .filter((command) => commandQuery ? command.score > 0 : true)
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+      .slice(0, limit);
+  }
+
+  return [];
 }
 
 export function buildSkillCommand(skillName) {
@@ -38,12 +96,26 @@ export function normalizeSkillCommandLine(rawLine) {
 export async function promptForChatInput({
   input,
   output,
-  skillProvider
+  skillProvider,
+  modeLabel = ""
 }) {
   if (!input.isTTY || typeof input.setRawMode !== "function") {
     const rl = readline.createInterface({ input, output });
+    output.write(`${formatPlainPromptPrefix(modeLabel)} `);
     try {
-      return (await rl.question("> ")).trim();
+      const answer = await new Promise((resolve) => {
+        let settled = false;
+        const finish = (value) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          resolve(value);
+        };
+        rl.once("line", finish);
+        rl.once("close", () => finish(null));
+      });
+      return answer === null ? "/exit" : String(answer).trim();
     } finally {
       rl.close();
     }
@@ -58,15 +130,25 @@ export async function promptForChatInput({
     let renderedRowCount = 0;
     let promptCursorRowOffset = 0;
     let selectedSkill = null;
+    let selectedGoalCommand = null;
+    let selectedSlashCommand = null;
 
     readline.emitKeypressEvents(input);
     input.setRawMode(true);
 
     const getSuggestions = () => {
-      if (selectedSkill) {
+      if (selectedSkill || selectedGoalCommand) {
         return [];
       }
-      const suggestions = getSkillSuggestions(buffer, skills, 8);
+
+      let suggestionInput = buffer;
+      if (selectedSlashCommand === "skill") {
+        suggestionInput = `/skill ${buffer}`;
+      } else if (selectedSlashCommand === "goal") {
+        suggestionInput = `/goal ${buffer}`;
+      }
+
+      const suggestions = getSlashSuggestions(suggestionInput, skills, 8);
       if (suggestionIndex >= suggestions.length) {
         suggestionIndex = Math.max(0, suggestions.length - 1);
       }
@@ -90,17 +172,24 @@ export async function promptForChatInput({
     const render = () => {
       clearRender();
       const suggestions = getSuggestions();
-      const lines = [renderPromptLine({ selectedSkill, buffer })];
+      const lines = [renderPromptLine({ modeLabel, selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer })];
       if (suggestions.length > 0) {
-        lines.push("  Skills  (↑/↓ select, Enter/Tab choose)");
+        lines.push(`  ${renderSuggestionHeader(suggestions)}  (↑/↓ select, Enter/Tab choose)`);
         for (let index = 0; index < suggestions.length; index += 1) {
-          const skill = suggestions[index];
+          const suggestion = suggestions[index];
           const marker = index === suggestionIndex ? "›" : " ";
-          lines.push(`  ${marker} ${skill.name} — ${truncate(skill.description || "(no description)", 72)}`);
+          lines.push(`  ${marker} ${suggestion.name} — ${truncate(suggestion.description || "(no description)", 72)}`);
         }
       }
       const terminalColumns = getTerminalColumns(output);
-      const promptCursorColumn = getPromptCursorColumn({ selectedSkill, cursor, buffer });
+      const promptCursorColumn = getPromptCursorColumn({
+        modeLabel,
+        selectedSlashCommand,
+        selectedSkill,
+        selectedGoalCommand,
+        cursor,
+        buffer
+      });
       renderedRowCount = countRenderedRows(lines, terminalColumns);
       promptCursorRowOffset = Math.floor(promptCursorColumn / terminalColumns);
       output.write(lines.join("\n"));
@@ -119,9 +208,23 @@ export async function promptForChatInput({
       if (suggestions.length === 0) {
         return;
       }
-      selectedSkill = suggestions[suggestionIndex];
-      buffer = "";
-      cursor = 0;
+      const suggestion = suggestions[suggestionIndex];
+      if (suggestion.kind === "command") {
+        selectedSlashCommand = suggestion.command;
+        buffer = "";
+        cursor = 0;
+      } else if (suggestion.kind === "skill") {
+        selectedSkill = suggestion;
+        selectedSlashCommand = "skill";
+        buffer = "";
+        cursor = 0;
+      } else if (suggestion.kind === "goal") {
+        selectedGoalCommand = suggestion.command;
+        selectedSlashCommand = "goal";
+        buffer = "";
+        cursor = 0;
+      }
+      suggestionIndex = 0;
     };
 
     const onKeypress = (_str, key = {}) => {
@@ -131,7 +234,7 @@ export async function promptForChatInput({
       }
 
       if (key.name === "return") {
-        if (!selectedSkill && getSuggestions().length > 0) {
+        if (!selectedSkill && !selectedGoalCommand && getSuggestions().length > 0) {
           insertSelectedSuggestion();
           render();
           return;
@@ -171,8 +274,14 @@ export async function promptForChatInput({
       }
 
       if (key.name === "backspace") {
-        if (selectedSkill && cursor === 0 && buffer.length === 0) {
-          selectedSkill = null;
+        if ((selectedSkill || selectedGoalCommand || selectedSlashCommand) && cursor === 0 && buffer.length === 0) {
+          if (selectedSkill) {
+            selectedSkill = null;
+          } else if (selectedGoalCommand) {
+            selectedGoalCommand = null;
+          } else {
+            selectedSlashCommand = null;
+          }
           suggestionIndex = 0;
           render();
           return;
@@ -201,26 +310,58 @@ export async function promptForChatInput({
       input.off("keypress", onKeypress);
       input.setRawMode(false);
       clearRender();
-      const line = selectedSkill
-        ? composeSelectedSkillLine(selectedSkill.name, currentBuffer)
-        : currentBuffer;
-      output.write(`> ${renderPrintableEcho({ selectedSkill, buffer: currentBuffer })}\n`);
+      const line = composeLine({ selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer: currentBuffer });
+      output.write(`${formatPlainPromptPrefix(modeLabel)} ${renderPrintableEcho({ selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer: currentBuffer })}\n`);
       resolve(line.trim());
     }
   });
 }
 
-function normalizeSkillQuery(inputValue) {
+function parseSlashInput(inputValue) {
   const value = String(inputValue || "");
   if (!value.startsWith("/")) {
     return null;
   }
 
-  return value
-    .replace(/^\//, "")
-    .replace(/^skill\s+/i, "")
-    .trim()
-    .toLowerCase();
+  const withoutSlash = value.slice(1);
+  const topMatch = withoutSlash.match(/^(\S*)(?:\s+([\s\S]*))?$/);
+  const command = String(topMatch?.[1] || "").toLowerCase();
+  const rest = topMatch?.[2] ?? "";
+
+  if (command === "skill" || command === "skills") {
+    return { mode: "skill", query: rest.trim().toLowerCase() };
+  }
+
+  if (command === "goal") {
+    return { mode: "goal", query: rest.trim().toLowerCase() };
+  }
+
+  return { mode: "top", query: withoutSlash.trim().toLowerCase() };
+}
+
+function normalizeSkillQuery(inputValue) {
+  const state = parseSlashInput(inputValue);
+  if (!state) {
+    return null;
+  }
+  if (state.mode === "skill") {
+    return state.query;
+  }
+  if (state.mode === "top") {
+    return state.query.replace(/^skill\s+/i, "").trim().toLowerCase();
+  }
+  return null;
+}
+
+function rankSkills(skills, query, limit) {
+  return (Array.isArray(skills) ? skills : [])
+    .map((skill) => ({
+      ...skill,
+      score: scoreSkill(skill, query)
+    }))
+    .filter((skill) => query ? skill.score > 0 : true)
+    .sort((a, b) => b.score - a.score || String(a.name || "").localeCompare(String(b.name || "")))
+    .slice(0, limit);
 }
 
 function scoreSkill(skill, query) {
@@ -249,6 +390,26 @@ function scoreSkill(skill, query) {
   return score;
 }
 
+function scoreCommand(command, query) {
+  if (!query) {
+    return 1;
+  }
+  const name = String(command.name || "").toLowerCase();
+  const haystack = `${name} ${String(command.description || "").toLowerCase()}`;
+  let score = 0;
+  if (name.startsWith(query)) {
+    score += 5;
+  }
+  if (haystack.includes(query)) {
+    score += 3;
+  }
+  return score;
+}
+
+function firstToken(value) {
+  return String(value || "").trim().split(/\s+/)[0] || "";
+}
+
 function truncate(value, maxChars) {
   const text = String(value || "");
   if (text.length <= maxChars) {
@@ -257,34 +418,89 @@ function truncate(value, maxChars) {
   return `${text.slice(0, Math.max(0, maxChars - 1))}…`;
 }
 
-function renderPromptLine({ selectedSkill, buffer }) {
-  if (!selectedSkill) {
-    return `> ${buffer}`;
+function renderSuggestionHeader(suggestions) {
+  const firstKind = suggestions[0]?.kind;
+  if (firstKind === "command") {
+    return "Commands";
   }
-  return `> ${renderSelectedSkillToken(selectedSkill.name)} ${buffer}`;
-}
-
-function renderPrintableEcho({ selectedSkill, buffer }) {
-  if (!selectedSkill) {
-    return buffer;
+  if (firstKind === "goal") {
+    return "Goal commands";
   }
-  return `[${selectedSkill.name}] ${buffer}`.trimEnd();
+  return "Skills";
 }
 
-function renderSelectedSkillToken(skillName) {
-  return `\x1b[47m\x1b[30m ${String(skillName || "")} \x1b[0m`;
+function renderPromptLine({ modeLabel, selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer }) {
+  return `${formatPromptPrefix(modeLabel)} ${renderInputPrefix({ selectedSlashCommand, selectedSkill, selectedGoalCommand })}${buffer}`;
 }
 
-function getPromptCursorColumn({ selectedSkill, cursor, buffer }) {
-  if (!selectedSkill) {
-    return 2 + stringDisplayWidth(cursorSlice(cursor, buffer));
+function renderPrintableEcho({ selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer }) {
+  return `${renderPlainInputPrefix({ selectedSlashCommand, selectedSkill, selectedGoalCommand })}${buffer}`.trimEnd();
+}
+
+function renderInputPrefix({ selectedSlashCommand, selectedSkill, selectedGoalCommand }) {
+  if (selectedSkill) {
+    return `${renderSelectedToken(selectedSkill.name)} `;
   }
-  return 2 + stringDisplayWidth(String(selectedSkill.name || "")) + 3 + stringDisplayWidth(cursorSlice(cursor, buffer));
+  if (selectedGoalCommand) {
+    return `${renderSelectedToken(`/goal ${selectedGoalCommand}`)} `;
+  }
+  if (selectedSlashCommand === "skill") {
+    return `${renderSelectedToken("/skill")} `;
+  }
+  if (selectedSlashCommand === "goal") {
+    return `${renderSelectedToken("/goal")} `;
+  }
+  return "";
 }
 
-function composeSelectedSkillLine(skillName, buffer) {
+function renderPlainInputPrefix({ selectedSlashCommand, selectedSkill, selectedGoalCommand }) {
+  if (selectedSkill) {
+    return `[${selectedSkill.name}] `;
+  }
+  if (selectedGoalCommand) {
+    return `/goal ${selectedGoalCommand} `;
+  }
+  if (selectedSlashCommand === "skill") {
+    return "/skill ";
+  }
+  if (selectedSlashCommand === "goal") {
+    return "/goal ";
+  }
+  return "";
+}
+
+function renderSelectedToken(value) {
+  return `\x1b[47m\x1b[30m ${String(value || "")} \x1b[0m`;
+}
+
+function formatPlainPromptPrefix(modeLabel) {
+  return modeLabel ? `(${modeLabel}) >` : ">";
+}
+
+function formatPromptPrefix(modeLabel) {
+  return modeLabel ? `\x1b[36m(${modeLabel})\x1b[0m >` : ">";
+}
+
+function getPromptCursorColumn({ modeLabel, selectedSlashCommand, selectedSkill, selectedGoalCommand, cursor, buffer }) {
+  const visiblePrefix = `${formatPlainPromptPrefix(modeLabel)} ${renderPlainInputPrefix({ selectedSlashCommand, selectedSkill, selectedGoalCommand })}`;
+  return stringDisplayWidth(visiblePrefix) + stringDisplayWidth(cursorSlice(cursor, buffer));
+}
+
+function composeLine({ selectedSlashCommand, selectedSkill, selectedGoalCommand, buffer }) {
   const query = String(buffer || "").trim();
-  return `${buildSkillCommand(skillName)}${query}`.trimEnd();
+  if (selectedSkill) {
+    return `${buildSkillCommand(selectedSkill.name)}${query}`.trimEnd();
+  }
+  if (selectedGoalCommand) {
+    return `/goal ${selectedGoalCommand} ${query}`.trimEnd();
+  }
+  if (selectedSlashCommand === "skill") {
+    return `/skill ${query}`.trimEnd();
+  }
+  if (selectedSlashCommand === "goal") {
+    return `/goal ${query}`.trimEnd();
+  }
+  return buffer;
 }
 
 function getTerminalColumns(output) {
@@ -338,5 +554,5 @@ function cursorSlice(cursor, value) {
 }
 
 function stripAnsi(value) {
-  return String(value || "").replace(/\x1B\[[0-9;?]*[ -/]*[@-~]/g, "");
+  return String(value || "").replace(/\x1b\[[0-9;]*m/g, "");
 }

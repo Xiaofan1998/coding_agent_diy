@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { summarizeGitStatus } from "../context/repo-context.js";
 import { resolveArtifactRecordPath } from "../shared/artifact-paths.js";
 
 const execFileAsync = promisify(execFile);
@@ -120,23 +121,17 @@ export class ReviewManager {
     const artifacts = await this.stateStore.listPlanArtifacts();
     const findings = [];
 
-    if (!session.summary) {
-      findings.push("Session summary is empty.");
+    if ((session.transcriptMessages || []).length === 0) {
+      findings.push("No transcript messages have been recorded.");
     }
 
-    if ((session.turns || []).length === 0) {
-      findings.push("No conversation turns have been recorded.");
-    }
-
-    findings.push(`Recent turn count: ${(session.turns || []).length}`);
+    findings.push(`Recent transcript turn count: ${session.transcriptTurnCount || 0}`);
     findings.push(`Exported plan artifacts: ${artifacts.length}`);
 
-    const blockingFindings = findings.filter((entry) => {
-      return entry.startsWith("Session summary is empty") || entry.startsWith("No conversation turns");
-    });
+    const blockingFindings = findings.filter((entry) => entry.startsWith("No transcript messages"));
 
     const summary = blockingFindings.length === 0
-      ? "Session review passed. Session history and summary are present."
+      ? "Session review passed. Transcript history is present."
       : `Session review found ${blockingFindings.length} blocking issue(s).`;
 
     const record = {
@@ -424,9 +419,11 @@ async function inspectGitState(projectRoot) {
       cwd: projectRoot
     });
     const trimmed = stdout.trim();
-    return trimmed
-      ? [`Git status summary present:\n${trimmed}`]
-      : ["Git status summary: clean or repository unavailable."];
+    if (!trimmed) {
+      return ["Git status summary: clean or repository unavailable."];
+    }
+    return [`Git status summary present:
+${summarizeGitStatus(trimmed)}`];
   } catch {
     return ["Git status summary unavailable."];
   }

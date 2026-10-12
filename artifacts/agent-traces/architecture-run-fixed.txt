@@ -1,0 +1,233 @@
+
+━━ Agent turn 023298d3-8374-4dd2-bdd7-ff1e615c9b54 ━━
+↻ loop started
+⇢ model request
+⇠ model response · 2 tool call(s) · text: I'll re-verify the current repository state fresh before summarizing.
+◇ first tool strategy · chosen=run_shell · suggested=get_dashboard_summary, get_plan_summary, list_subagents, read_subagent, list_traces · matched=false
+╭─ tool run_shell · risk=caution
+│ args {"command":"echo \"=== top level ===\"; ls -1; echo; echo \"=== packages ===\"; ls -1 packages; echo; echo \"=== apps ===\"; ls -1 apps"}
+
+╰─ tool run_shell ok · output 469 chars · { "status": "success", "summary": "Command executed (39 lines stdout)", "data": { "stdout": "=== top level ===\nCHANGELOG.md\nREADME.md\nRELEASE.md\nROADMAP.md\napps\nartifacts\nbin\ndist\ndocs\nhooks\npackage.json\npackages\nprompts\nscripts\nskills\n\n=== packages ===\napprovals\nbundles\ncontext…
+╭─ tool run_shell · risk=caution
+│ args {"command":"echo \"=== packages tree (1 level) ===\"; for d in packages/*/; do echo \"-- $d\"; ls -1 \"$d\" | sed 's/^/   /'; done"}
+
+╰─ tool run_shell ok · output 1303 chars · { "status": "success", "summary": "Command executed (62 lines stdout)", "data": { "stdout": "=== packages tree (1 level) ===\n-- packages/approvals/\n artifact-manager.js\n-- packages/bundles/\n artifact-manager.js\n-- packages/context/\n repo-context.js\n-- packages/core/\n agent-loop.js\n context…
+⇢ model request
+⇠ model response · 2 tool call(s)
+╭─ tool run_shell · risk=caution
+│ args {"command":"echo \"=== line counts (core-ish) ===\"; wc -l packages/memory/state-store.js packages/core/runtime.js packages/core/agent-loop.js packages/tools/state-tools.js packages/skills/discovery.js packages/subagents/manager.js apps/cli/index.js packages/llm/local-fallback.js 2>/dev/null; echo; echo \"=== total JS lines in packages/apps/scripts ===\"; find packages apps scripts -name '*.js' | xargs wc -l | tail -1"}
+
+╰─ tool run_shell ok · output 493 chars · { "status": "success", "summary": "Command executed (13 lines stdout)", "data": { "stdout": "=== line counts (core-ish) ===\n 2348 packages/memory/state-store.js\n 980 packages/core/runtime.js\n 335 packages/core/agent-loop.js\n 1242 packages/tools/state-tools.js\n 291 packages/skills/discovery.js\…
+╭─ tool run_shell · risk=caution
+│ args {"command":"echo \"=== tool name counts per file ===\"; for f in packages/tools/*.js; do printf \"%s: \" \"$f\"; grep -c \"name:\" \"$f\"; done; echo; echo \"=== registry exports ===\"; grep -n \"export\" packages/tools/registry.js | head; echo; echo \"=== git status short ===\"; git status --short | head -40"}
+
+╰─ tool run_shell ok · output 2531 chars · { "status": "success", "summary": "Command executed (53 lines stdout)", "data": { "stdout": "=== tool name counts per file ===\npackages/tools/file-tools.js: 5\npackages/tools/git-tools.js: 3\npackages/tools/registry.js: 1\npackages/tools/shell-tool.js: 1\npackages/tools/state-tools.js: 78\npackage…
+⇢ model request
+⇠ model response · 0 tool call(s) · text: 已按当前仓库实测状态核对完毕（含文件树、行数、工具计数、git 状态）。以下为 `code-agent-0617` 的架构梳理。 --- # code-agent-0617 架构梳理（实测版） ## 一、项目定位 | 项 | 值 | |----|-----| | 名称/版本 | `code-agent-0617` v0.1.0（private） | | 定…
+
+━━ Final answer ━━
+已按当前仓库实测状态核对完毕（含文件树、行数、工具计数、git 状态）。以下为 `code-agent-0617` 的架构梳理。
+
+---
+
+# code-agent-0617 架构梳理（实测版）
+
+## 一、项目定位
+
+| 项 | 值 |
+|----|-----|
+| 名称/版本 | `code-agent-0617` v0.1.0（private） |
+| 定位 | 终端优先（terminal-first）coding agent，参考 Codex 工作流 |
+| 运行时 | Node.js `>=20`，纯 ESM（`"type": "module"`） |
+| 依赖 | **无第三方运行时依赖**（仅 Node 内置模块，含 `node:sqlite`） |
+| 代码规模 | **16,492 行** JS（packages + apps + scripts） |
+
+## 二、顶层目录
+
+```
+code-agent-0617/
+├── apps/          入口层：cli/（交互）+ demo/（静态 Web 预览）
+├── packages/      核心库（17 个子模块，见第三节）
+├── prompts/       system prompt 分片：base/coding/tools/skills/goals/memory/formatting
+├── skills/builtin/  内置技能：subagent-driven-development / using-skills / writing-plans
+├── scripts/       check.js · smoke-test.js · chat-monitor.js · 打包脚本
+├── docs/          文档 + 导出的 artifact 家族目录
+├── hooks/         Codex 插件 hook
+├── .evals/        评估框架：capability/ + baseline.json
+├── .codex-plugin/ 插件清单
+├── bin/code-agent 启动脚本
+├── artifacts/     运行期产物（新增，未提交）
+└── dist/          打包产物（codex-plugin / release 两份镜像）
+```
+
+## 三、packages/ 分层（17 个子模块）
+
+```
+① 入口层   apps/cli · apps/demo
+② 编排层   core/  runtime.js(980) · agent-loop.js(335) · prompt-builder.js(171)
+                  · tool-governance · strategy-mode · working-memory · context-compactor(178)
+③ 能力层   tools/（6 文件）· llm/（4 客户端）· skills/discovery(291) · subagents/manager(253)
+④ 领域层   plans · reviews · workflows · approvals · traces
+           dashboard · bundles · state-export · workspace
+⑤ 基础层   shared/（config·json·fs-utils·artifact-paths·artifact-render·workspace-roots）
+           memory/（state-store 2348 · file-memory-store 248）· context/repo-context(395)
+```
+
+**核心文件行数（实测）**
+
+| 文件 | 行数 | 角色 |
+|------|-----|------|
+| `memory/state-store.js` | 2348 | SQLite 持久化总枢纽 |
+| `apps/cli/index.js` | 1499 | CLI 命令解析与路由 |
+| `scripts/smoke-test.js` | 1462 | 冒烟/回归测试 |
+| `tools/state-tools.js` | 1242 | 78 个状态/领域工具 |
+| `core/runtime.js` | 980 | 运行时装配中心 |
+| `apps/demo/server.js` | 917 | Demo HTTP 服务 |
+| `llm/local-fallback.js` | 566 | 无 API Key 时本地降级 Agent |
+
+## 四、启动装配（`AgentRuntime.create`，`core/runtime.js`，唯一依赖注入点）
+
+```
+1. SqliteStateStore.create(config)              → 持久化后端
+2. resolveStrategyProfile(strategyMode)         → 合并策略档
+3. new SkillDiscovery(config)
+4. modelClient = mock ? MockResponsesClient : createModelClient(...)
+5. runtimeFactory = async ({subagent, allowedTools}) => create(...)   ← 递归装配，子 agent 隔离
+6. 实例化 11 个 Manager：Review / PlanArtifact / ReviewArtifact /
+   WorkspaceSnapshot / Subagent / TraceArtifact / DashboardArtifact /
+   BundleIndexArtifact / ApprovalArtifact / StateSnapshotArtifact / Workflow(+Artifact)
+7. tools = [file, git, shell, web, state]
+8. options.allowedTools 有值 → tools.filter(白名单)   ← 权限收窄
+9. new ToolRegistry(allowedTools)
+10. new AgentRuntime({...}) → fallbackAgent = new LocalFallbackAgent(...)
+```
+> 子 agent 通过**再次调用 `create` + `allowedTools` 白名单**获得受限运行时，天然实现权限隔离。
+
+## 五、Agent Loop（`core/agent-loop.js`，335 行）
+
+**Hybrid 架构 = ReAct 规划 + Function-Calling 执行**
+
+```
+runAgentLoop()
+  while(true):
+    ├─ 注入 steering 消息（运行中插话）
+    ├─ modelClient.createResponse()  → text + functionCalls
+    ├─ 无 functionCall → 输出 finalMessage（检查 followUp 后 break）
+    └─ 遍历 functionCall:
+        ├─ suggestedFirstTool 强制重定向（策略可开启）
+        ├─ executeTool() → 标准化/截断/错误捕获
+        ├─ 记录 tool_call trace
+        └─ 重复签名检测（(name+args+output)）→ 停滞重定向
+```
+三重保护：**首工具策略** / **停滞检测** / **上下文压缩**（`microcompactContext`）。
+
+## 六、工具系统（6 文件，实测计数）
+
+| 文件 | 工具数 | 类别 |
+|------|-------|------|
+| `file-tools.js` | 5 | 文件 |
+| `git-tools.js` | 3 | Git |
+| `shell-tool.js` | 1 | Shell |
+| `web-tools.js` | 2 | 网络 |
+| `state-tools.js` | **78** | 状态/领域（goal/plan/session/memory/subagent/review/workflow/approval/trace/state） |
+| `registry.js` | 0 | 注册中心（`wrapSuccess/wrapWarning/wrapError` + `ToolRegistry`） |
+
+**标准化响应**（`registry.js`）：
+```js
+{ status: "success"|"warning"|"error", summary, data, next_actions?, artifacts? }
+```
+**工具元数据**（`registry.list()` 暴露）：`riskLevel`（safe/caution/restricted/forbidden）、`granularity`（micro/medium/macro）、`errorRecovery`（rootCauseHint / safeRetry / stopCondition）。
+
+## 七、治理与策略（`tool-governance.js` + `strategy-mode.js`）
+
+| 模式 | maxToolRisk | subagentMaxToolRisk | autoRunDeliveryWorkflow | enforceSuggestedFirstTool |
+|------|------------|--------------------|------------------------|--------------------------|
+| balanced | caution | caution | ✗ | ✗ |
+| conservative | safe | safe | ✗ | ✓ |
+| autonomous | restricted | caution | ✓ | ✗ |
+
+**执行拦截链**（`runtime.executeTool`）：
+```
+getEffectiveToolPolicy → findApprovedToolPolicyOverride → assertToolAllowed
+  → 拦截则 createApprovalRequestForPolicyBlock + enrichErrorWithRecovery
+  → 否则 tool.execute(args)
+```
+**双重安全锁**：① 策略闸门（超限生成 approval request，批准后按精确 args 重试）；② Governance Hold（存在未审批请求时子 agent 工具集自动降级为只读）。
+
+## 八、LLM 层（`packages/llm/`）
+
+| 文件 | 行数 | 作用 |
+|------|-----|------|
+| `openai-responses.js` | 268 | OpenAI Responses API 客户端 |
+| `anthropic-messages.js` | 209 | Anthropic Messages API 客户端 |
+| `mock-model.js` | 144 | Mock 模式（`CODE_AGENT_MOCK_MODEL=1`） |
+| `local-fallback.js` | 566 | 无 API Key 时的本地降级 Agent |
+
+`runTurn` 分支：无 key 且非 mock → `fallbackAgent.run()`；否则 → 构建 prompt → 压缩 → `runAgentLoop`；异常 → `handleModelFailureFallback`。
+
+## 九、上下文与 Prompt
+
+**装配顺序**：`prompts/{base,coding,tools,skills,goals,memory,formatting}.md` + Runtime Context（工具/goal/plan/repo 快照/dashboard/记忆）+ Tool And Output Contract。
+**预算优化**：主技能（`activatedSkills[0]`）嵌入完整 body（≤6000 字符），其余仅列 name+description 摘要，按需经 `read_skill()` 加载。
+**压缩**：`context-compactor.js`（178 行）超阈值压缩旧消息。
+**仓库上下文**：`context/repo-context.js`（395 行）按查询打分 + 片段提取。
+
+## 十、领域层 Manager 族
+
+统一「**Manager（业务）+ ArtifactManager（Markdown 导出）**」成对结构，artifact 落 `docs/agent-*/`：
+
+| 领域 | 文件 |
+|------|------|
+| plans | `plans/manager.js` |
+| reviews | `reviews/manager.js` + `artifact-manager.js` |
+| workflows | `workflows/manager.js` + `artifact-manager.js` |
+| approvals | `approvals/artifact-manager.js` |
+| traces | `traces/artifact-manager.js` |
+| dashboard | `dashboard/artifact-manager.js` |
+| bundles | `bundles/artifact-manager.js` |
+| state-export | `state-export/`（artifact-manager · snapshot · schema · html-render · ui-demo-render · demo-render） |
+| workspace | `workspace/snapshot-manager.js` |
+
+## 十一、Skill 与 Subagent
+
+- **SkillDiscovery**（`skills/discovery.js`，291 行）：扫描 `skills/builtin` / `skills/repo` / `~/.code-agent/skills`，按 userMessage + goal 匹配激活，支持 references/scripts/assets 按需嵌入。
+- **SubagentManager**（`subagents/manager.js`，253 行）：`runSubagent` → 补 goal/plan/summary/repoSnapshot → Governance Hold 检查（降级只读）→ `runtimeFactory` 建子 runtime → `buildSubagentContextPackage` → `runSyntheticTurn` → `validateSubagentResult`（non_empty / no_error_signals / objective_relevance）→ 保存记录 + trace。`runPlan()` 批量串行 + 快照 diff。
+
+## 十二、记忆与配置
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| SQLite 状态存储 | `memory/state-store.js`（2348） | session/goal/plan/trace/approval 等 |
+| 文件型长期记忆 | `memory/file-memory-store.js`（248） | `MEMORY.md`（user/feedback/project/reference） |
+| 工作记忆 | `core/working-memory.js` | 会话摘要 + 子 agent 上下文包 |
+
+路径解析（`shared/config.js`）：状态目录 `CODE_AGENT_HOME` 或 `<root>/.coding-agent`；记忆目录 `CODE_AGENT_MEMORY_DIR`；artifact 目录 `CODE_AGENT_ARTIFACTS_DIR` 或 `<root>/docs`。
+
+## 十三、入口层与当前 git 状态
+
+- **CLI**（`apps/cli/index.js`，1499 行）：`chat / run / strategy / goal / session / plan / subagents / skills / reviews / approvals / workspace / workflow / traces / dashboard / bundle-index / machine-state / config / repo`，chat 内亦支持斜杠命令。
+- **Demo**（`apps/demo/`）：静态预览，读取 machine-state / dashboard / bundle-index artifact。
+- **git status**：`packages/` 与 `dist/code-agent-release/` 下多个文件已改（agent-harness 改造未提交）；新增未跟踪：`packages/core/context-compactor.js`、`packages/memory/file-memory-store.js`、`artifacts/`。
+
+## 十四、架构特征
+
+| 特征 | 体现 |
+|------|------|
+| 零依赖 | 全 Node 内置模块（含 `node:sqlite`） |
+| 五层清晰 | 入口 → 编排 → 能力 → 领域 → 基础 |
+| 单点装配 | `AgentRuntime.create` 注入全部 Manager |
+| Hybrid Loop | ReAct 规划 + FC 执行 + 停滞/首工具保护 |
+| 双重治理 | 策略风险闸门 + Governance Hold 只读降级 |
+| 标准响应 | 工具统一 `{status, summary, data, next_actions, artifacts}` |
+| 错误契约 | 每工具 `errorRecovery` |
+| 按需上下文 | 主技能全量、其余摘要、压缩器兜底 |
+| 递归隔离 | 子 agent 经 runtimeFactory + 白名单受控 |
+| 全留痕 | 8 类领域 artifact 统一落 `docs/agent-*/` |
+
+> `dist/` 下为 `codex-plugin` 与 `release` 两份打包镜像，内容等同 `packages/`+`apps/`，无需单独维护。
+
+---
+
+需要我继续深入吗？例如 `state-tools.js` 的 78 个工具完整清单、`state-store.js` 的 SQLite 表结构，或 `runtime.executeTool` 的完整执行链。
+✓ loop ended · 4 tool step(s)
+⎋ turn stored · 023298d3-8374-4dd2-bdd7-ff1e615c9b54

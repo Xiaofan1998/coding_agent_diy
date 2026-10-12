@@ -6,7 +6,7 @@
 - 支持多轮 CLI 对话
 - 有工具注册与调度层
 - 支持 `SKILL.md` 发现与按需加载
-- 支持 session、goal、plan、memory 的本地持久化
+- 支持 session、goal、plan 的本地状态持久化，以及 Markdown 文件型长期记忆
 - 预留 subagent 和更强上下文治理接口
 
 文档导航见 [docs/README.md](/Users/zyb/Downloads/xfbo_homework/code/code-agent-0617/docs/README.md)。
@@ -205,15 +205,17 @@
 
 - 项目根目录下的 `.env` 会在启动时自动加载。
 - 支持 `export KEY=value` 和普通 `KEY=value` 两种写法。
-- `OPENAI_*` / `CODE_AGENT_*` 会优先使用 `.env` 中的值。
+- `API_*` / `OPENAI_MODEL` / `CODE_AGENT_*` 会优先使用 `.env` 中的值。
 - 如需禁用 `.env` 自动注入，可设置 `CODE_AGENT_DISABLE_DOTENV=1`。
 
-- `OPENAI_API_KEY`: 必填，模型调用密钥
+- `API_KEY`: 必填，模型调用密钥
 - `OPENAI_MODEL`: 可选，默认 `gpt-5.5`
-- `OPENAI_BASE_URL`: 可选，默认 `https://api.openai.com/v1`
+- `API_HOST`: 可选，设置后会自动使用 `${API_HOST}/openproxy/rp/v1/chat/completions`；未设置时默认使用官方 OpenAI 兼容地址
 - `OPENAI_TIMEOUT_MS`: 可选，请求超时毫秒数，默认 `30000`
-- `OPENAI_MAX_RETRIES`: 可选，暂时性 Responses API 错误的自动重试次数，默认 `2`
+- `OPENAI_MAX_RETRIES`: 可选，暂时性 Chat Completions API 错误的自动重试次数，默认 `2`
 - `CODE_AGENT_HOME`: 可选，状态目录，默认 `<projectRoot>/.coding-agent`
+- `CODE_AGENT_SESSION_ID`: 可选，指定要写入/恢复的 session；未设置时每次进程启动会生成带启动时间戳的新 session id
+- `CODE_AGENT_MEMORY_DIR`: 可选，Markdown 长期记忆根目录，默认 `<CODE_AGENT_HOME>/memory`；实际项目记忆会写入其下由项目绝对路径转义得到的子目录
 - `CODE_AGENT_USER_SKILL_DIR`: 可选，user-global skills 目录，默认 `~/.code-agent/skills`
 - `CODE_AGENT_ARTIFACTS_DIR`: 可选，artifact 根目录，默认 `<projectRoot>/docs`
 - `CODE_AGENT_WORKSPACE_ROOTS`: 可选，额外 workspace roots，使用系统路径分隔符连接；这些路径内的文件也允许读取/写入/作为 shell cwd
@@ -230,12 +232,12 @@
 ## 当前能力
 
 - CLI `chat` 和 `run`
-- 基于 Responses API 的 function-calling orchestration
+- 基于 OpenAI 兼容 Chat Completions API 的 function-calling orchestration
 - 文件、搜索、shell、skill、plan、goal、memory 工具
 - repo-local 与 built-in skills
 - repo-local / user-global / built-in 三层 skills 优先级
 - skill support files 感知：可发现 `references/`、`scripts/`、`assets/` 并在激活时注入相关上下文
-- SQLite 本地状态存储
+- SQLite 本地运行状态存储，长期 memory 使用 Markdown 文件目录
 - 基础 goal / plan / skills CLI 命令
 - 更完整的 goal 治理 CLI：create/show/list/complete/cancel/resume
 - goal blocked 审计：同一治理阻塞连续出现时由 runtime 自动累计并标记 blocked
@@ -257,10 +259,10 @@
 - bundle-index 聚合视图
 - 模型侧可直接读取 / 导出 bundle-index artifacts
 - 首个工具建议遵循的可选 runtime 约束
-- 面向当前用户请求的 relevant repo context 选择
-- prompt 预算裁剪，避免 repo / dashboard / skill 上下文无限膨胀
-- 结构化 working memory 摘要，而不是无限堆叠原始 transcript
-- subagent 窄上下文打包，向子会话下发目标、计划、相关文件与摘要片段
+- 基于 transcript 的 context compact / microcompact，避免上下文无限膨胀
+- transcript_messages 保存模型输出、thinking、tool_use/tool_result，并由 compact 机制折叠旧上下文
+- Markdown 文件型长期记忆：按项目绝对路径转义后的目录隔离，每个项目一个 `MEMORY.md`，内部按 Claude Code 兼容的 `user`、`feedback`、`project`、`reference` 分模块保存
+- subagent 窄上下文打包，向子会话下发目标、计划和显式上下文
 - runtime 统一工具治理，按 `safe/caution/restricted/forbidden` 风险级别拦截不允许的工具调用
 - workflow review checkpoint 与 approval request 治理链路
 - 独立 approval artifact 导出，串起审批请求、override、retry 的审计信息
@@ -280,7 +282,7 @@
 
 - 当前依赖 Node 24 自带的 `node:sqlite` 实验特性作为本地状态存储
 - subagent 已有运行时接口，但第一版以同步、窄上下文子会话为主
-- 不依赖官方 SDK，直接调用 Responses API HTTP 接口
+- 不依赖官方 SDK，直接调用 OpenAI 兼容 Chat Completions HTTP 接口
 
 ## 验证
 

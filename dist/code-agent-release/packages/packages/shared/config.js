@@ -1,17 +1,40 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import os from "node:os";
 import fs from "node:fs";
-import { parseAllowedPaths, parseWorkspaceRoots } from "./workspace-roots.js";
+import crypto from "node:crypto";
+import { normalizeFilesystemAccessMode, parseAllowedPaths, parseWorkspaceRoots } from "./workspace-roots.js";
+
+const PROCESS_SESSION_STARTED_AT = new Date();
+const PROCESS_SESSION_ID = createStartupSessionId(PROCESS_SESSION_STARTED_AT);
+const DEFAULT_API_HOST = "https://openproxy.zuoyebang.cc";
+const DEFAULT_API_KEY = "zyb-d95bddf9d719830eae81269beb6ef0e2@nlp";
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+
 
 export function loadConfig(projectRoot) {
   const root = path.resolve(projectRoot);
+  const agentRoot = resolveAgentRoot(root);
   const envInfo = loadProjectEnv(root);
+  const defaultApiDisabled = process.env.CODE_AGENT_DISABLE_DEFAULT_API_KEY === "1";
+  const apiHost = (process.env.API_HOST || (defaultApiDisabled ? "" : DEFAULT_API_HOST)).replace(/\/$/, "");
+  const openAiBaseUrl = apiHost
+    ? `${apiHost}/openproxy/rp/v1`
+    : "https://api.openai.com/v1";
+  const apiKey = process.env.API_KEY || (defaultApiDisabled ? "" : DEFAULT_API_KEY);
+  const maxContextTokens = Number(process.env.CODE_AGENT_MAX_CONTEXT_TOKENS || process.env.OPENAI_MAX_TOKENS || 800000);
+  const maxContextChars = Number(process.env.CODE_AGENT_MAX_CONTEXT_CHARS || 0) || Math.floor(maxContextTokens * 4);
   const artifactRootDir = process.env.CODE_AGENT_ARTIFACTS_DIR
     ? path.resolve(process.env.CODE_AGENT_ARTIFACTS_DIR)
     : path.join(root, "docs");
   const stateDir = process.env.CODE_AGENT_HOME
     ? path.resolve(process.env.CODE_AGENT_HOME)
     : path.join(root, ".coding-agent");
+  const memoryRootDir = process.env.CODE_AGENT_MEMORY_DIR
+    ? path.resolve(process.env.CODE_AGENT_MEMORY_DIR)
+    : path.join(stateDir, "memory");
+  const memoryDir = path.join(memoryRootDir, escapeProjectPath(root));
+  const sessionId = process.env.CODE_AGENT_SESSION_ID || PROCESS_SESSION_ID;
   const userSkillDir = process.env.CODE_AGENT_USER_SKILL_DIR
     ? path.resolve(process.env.CODE_AGENT_USER_SKILL_DIR)
     : path.join(os.homedir(), ".code-agent", "skills");
@@ -20,29 +43,26 @@ export function loadConfig(projectRoot) {
 
   return {
     projectRoot: root,
+    agentRoot,
     workspaceRoots,
     allowPaths,
     artifactRootDir,
     stateDir,
-    promptDir: path.join(root, "prompts"),
-    builtInSkillDir: path.join(root, "skills", "builtin"),
+    memoryDir,
+    sessionId,
+    promptDir: resolvePromptDir(agentRoot),
+    builtInSkillDir: resolveBuiltInSkillDir(agentRoot),
     repoSkillDir: path.join(root, "skills", "repo"),
     userSkillDir,
     openai: {
-      apiKey: process.env.OPENAI_API_KEY || "",
+      apiKey,
       model: process.env.OPENAI_MODEL || "gpt-5.5",
-      baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+      baseUrl: openAiBaseUrl,
       timeoutMs: Number(process.env.OPENAI_TIMEOUT_MS || 30000),
       maxRetries: Number(process.env.OPENAI_MAX_RETRIES || 2),
+      maxTokens: maxContextTokens,
+      maxCompletionTokens: Number(process.env.OPENAI_MAX_COMPLETION_TOKENS || 32000),
       mockMode: process.env.CODE_AGENT_MOCK_MODEL === "1"
-    },
-    anthropic: {
-      authToken: process.env.ANTHROPIC_AUTH_TOKEN || process.env.ANTHROPIC_API_KEY || process.env.DEEPSEEK_API_KEY || "",
-      model: process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_DEFAULT_SONNET_MODEL || process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "",
-      baseUrl: process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com",
-      timeoutMs: Number(process.env.ANTHROPIC_TIMEOUT_MS || process.env.OPENAI_TIMEOUT_MS || 30000),
-      maxRetries: Number(process.env.ANTHROPIC_MAX_RETRIES || process.env.OPENAI_MAX_RETRIES || 2),
-      subagentModel: process.env.CLAUDE_CODE_SUBAGENT_MODEL || process.env.ANTHROPIC_MODEL || process.env.ANTHROPIC_DEFAULT_SONNET_MODEL || ""
     },
     runtime: {
       hostName: os.hostname(),
@@ -52,6 +72,12 @@ export function loadConfig(projectRoot) {
       maxRepeatedToolCallStreak: Number(process.env.CODE_AGENT_MAX_REPEATED_TOOL_CALL_STREAK || 4),
       maxToolOutputChars: 12000,
       maxPromptChars: 32000,
+      maxContextTokens,
+      maxContextChars,
+      contextCompactThresholdRatio: Number(process.env.CODE_AGENT_CONTEXT_COMPACT_THRESHOLD || 0.9),
+      contextCompactKeepRecentMessages: Number(process.env.CODE_AGENT_CONTEXT_COMPACT_KEEP_RECENT || 10),
+      maxCompactedContextChars: Number(process.env.CODE_AGENT_MAX_COMPACTED_CONTEXT_CHARS || 6000),
+      maxCompactedMessageChars: Number(process.env.CODE_AGENT_MAX_COMPACTED_MESSAGE_CHARS || 4000),
       maxRepoContextChars: 12000,
       maxDashboardSummaryChars: 5000,
       maxSkillContextChars: 12000,
@@ -61,7 +87,8 @@ export function loadConfig(projectRoot) {
       requireConfirmationForRestricted: process.env.CODE_AGENT_REQUIRE_CONFIRM_RESTRICTED !== "0",
       autoRunDeliveryWorkflow: process.env.CODE_AGENT_AUTO_WORKFLOW === "1",
       enforceSuggestedFirstTool: process.env.CODE_AGENT_ENFORCE_SUGGESTED_FIRST_TOOL === "1",
-      debug: process.env.CODE_AGENT_DEBUG === "1"
+      debug: process.env.CODE_AGENT_DEBUG === "1",
+      filesystemAccessMode: normalizeFilesystemAccessMode(process.env.CODE_AGENT_FILESYSTEM_ACCESS_MODE || process.env.CODE_AGENT_ACCESS_MODE || "request-access")
     },
     web: {
       searchEndpoint: process.env.CODE_AGENT_WEB_SEARCH_ENDPOINT || "https://html.duckduckgo.com/html/",
@@ -70,6 +97,60 @@ export function loadConfig(projectRoot) {
     },
     env: envInfo
   };
+}
+
+function resolveAgentRoot(projectRoot) {
+  if (process.env.CODE_AGENT_INSTALL_ROOT) {
+    return path.resolve(process.env.CODE_AGENT_INSTALL_ROOT);
+  }
+
+  const sourceRoot = path.resolve(MODULE_DIR, "..", "..");
+  if (fs.existsSync(path.join(sourceRoot, "prompts", "base.md"))) {
+    return sourceRoot;
+  }
+
+  const releaseRoot = path.resolve(MODULE_DIR, "..", "..", "..");
+  if (fs.existsSync(path.join(releaseRoot, "prompts", "base.md"))) {
+    return releaseRoot;
+  }
+
+  if (fs.existsSync(path.join(projectRoot, "prompts", "base.md"))) {
+    return projectRoot;
+  }
+
+  return sourceRoot;
+}
+
+function resolvePromptDir(agentRoot) {
+  const direct = path.join(agentRoot, "prompts");
+  if (fs.existsSync(path.join(direct, "base.md"))) {
+    return direct;
+  }
+  const packaged = path.join(agentRoot, "prompts", "prompts");
+  if (fs.existsSync(path.join(packaged, "base.md"))) {
+    return packaged;
+  }
+  return direct;
+}
+
+function resolveBuiltInSkillDir(agentRoot) {
+  const direct = path.join(agentRoot, "skills", "builtin");
+  if (fs.existsSync(direct)) {
+    return direct;
+  }
+  const packaged = path.join(agentRoot, "skills", "skills", "builtin");
+  if (fs.existsSync(packaged)) {
+    return packaged;
+  }
+  return direct;
+}
+
+function createStartupSessionId(startedAt) {
+  const timestamp = startedAt
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  return `session_${timestamp}_${crypto.randomUUID().slice(0, 8)}`;
 }
 
 function loadProjectEnv(projectRoot) {
@@ -113,8 +194,21 @@ function loadProjectEnv(projectRoot) {
   };
 }
 
+function escapeProjectPath(projectRoot) {
+  return String(projectRoot || "project")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "project";
+}
+
 function shouldOverrideEnvKey(key) {
-  return key.startsWith("OPENAI_") || key.startsWith("ANTHROPIC_") || key.startsWith("CODE_AGENT_");
+  return key === "API_HOST"
+    || key === "API_KEY"
+    || key === "OPENAI_MODEL"
+    || key === "OPENAI_TIMEOUT_MS"
+    || key === "OPENAI_MAX_RETRIES"
+    || key === "CODE_AGENT_SESSION_ID"
+    || key.startsWith("CODE_AGENT_");
 }
 
 function parseEnvLine(line) {

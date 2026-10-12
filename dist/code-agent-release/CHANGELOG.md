@@ -11,7 +11,7 @@ Initial vertically integrated coding-agent release.
 - SQLite-backed state persistence for sessions, plans, goals, reviews, workflows, traces, approvals, and artifacts
 - Skill discovery with repo-local, user-global, and built-in precedence plus support-file awareness
 - Query-aware repo context selection and prompt budgeting
-- Structured working-memory summaries for session context hygiene
+- Transcript-aware context compaction and Markdown-backed project memory
 
 ### Subagents
 

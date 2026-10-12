@@ -1,29 +1,31 @@
 export class OpenAIResponsesClient {
   constructor(config) {
     this.config = config;
+    this.supportsResponseContinuation = false;
   }
 
-  async createResponse({ instructions, conversationItems, toolDefinitions, previousResponseId, inputItems }) {
+  async createResponse({ instructions, conversationItems, toolDefinitions }) {
     if (!this.config.openai.apiKey) {
       return {
         id: null,
-        outputText: "OPENAI_API_KEY is not set. Configure it to enable model-driven turns.",
+        outputText: "API_KEY is not set. Configure it to enable model-driven turns.",
         functionCalls: []
       };
     }
 
-    const input = inputItems || normalizeConversationItems(conversationItems);
     const timeoutMs = normalizeTimeout(this.config.openai.timeoutMs);
     const maxRetries = normalizeRetryCount(this.config.openai.maxRetries);
     const payload = {
       model: this.config.openai.model,
-      instructions,
-      input,
-      tools: toolDefinitions,
-      parallel_tool_calls: false,
-      previous_response_id: previousResponseId,
-      store: true
+      messages: normalizeMessages(instructions, conversationItems || []),
+      tools: normalizeTools(toolDefinitions || []),
+      stream: false,
+      max_completion_tokens: normalizeMaxCompletionTokens(this.config.openai.maxCompletionTokens)
     };
+
+    if (payload.tools.length === 0) {
+      delete payload.tools;
+    }
 
     let response;
     let attemptCount = 0;
@@ -31,13 +33,13 @@ export class OpenAIResponsesClient {
       attemptCount = attempt + 1;
       try {
         response = await executeRequest({
-          url: `${this.config.openai.baseUrl}/responses`,
+          url: `${this.config.openai.baseUrl.replace(/\/$/, "")}/chat/completions`,
           apiKey: this.config.openai.apiKey,
           payload,
           timeoutMs
         });
       } catch (error) {
-        debugLog(this.config, `responses request attempt ${attemptCount} failed before HTTP response: ${error instanceof Error ? error.message : String(error)}`);
+        debugLog(this.config, `chat completions request attempt ${attemptCount} failed before HTTP response: ${error instanceof Error ? error.message : String(error)}`);
         if (attempt >= maxRetries || !shouldRetryError(error)) {
           throw error;
         }
@@ -50,7 +52,7 @@ export class OpenAIResponsesClient {
       }
 
       const error = await buildHttpError(response);
-      debugLog(this.config, `responses request attempt ${attemptCount} returned HTTP ${response.status}`);
+      debugLog(this.config, `chat completions request attempt ${attemptCount} returned HTTP ${response.status}`);
       if (attempt >= maxRetries || !shouldRetryStatus(response.status)) {
         throw error;
       }
@@ -62,14 +64,15 @@ export class OpenAIResponsesClient {
     }
 
     const data = await response.json();
-    const outputItems = Array.isArray(data.output) ? data.output : [];
+    const message = data.choices?.[0]?.message || {};
     return {
       id: data.id || null,
-      outputText: extractOutputText(data, outputItems),
-      functionCalls: extractFunctionCalls(outputItems),
-      rawOutput: outputItems,
+      outputText: typeof message.content === "string" ? message.content.trim() : "",
+      functionCalls: extractFunctionCalls(message),
+      thinkingBlocks: extractThinkingBlocks(message),
+      rawOutput: data.choices || [],
       meta: {
-        provider: "openai-responses",
+        provider: "openai-chat-completions",
         attemptCount,
         httpStatus: response.status,
         requestId: readRequestId(response),
@@ -81,7 +84,7 @@ export class OpenAIResponsesClient {
 
 async function executeRequest({ url, apiKey, payload, timeoutMs }) {
   const controller = new AbortController();
-  const timeoutHandle = setTimeout(() => controller.abort(new Error(`OpenAI request timed out after ${timeoutMs}ms`)), timeoutMs);
+  const timeoutHandle = setTimeout(() => controller.abort(new Error(`OpenAI-compatible request timed out after ${timeoutMs}ms`)), timeoutMs);
   try {
     return await fetch(url, {
       method: "POST",
@@ -94,68 +97,128 @@ async function executeRequest({ url, apiKey, payload, timeoutMs }) {
     });
   } catch (error) {
     if (isAbortError(error)) {
-      throw new Error(`OpenAI request timed out after ${timeoutMs}ms`);
+      throw new Error(`OpenAI-compatible request timed out after ${timeoutMs}ms`);
     }
     const causeCode = error?.cause?.code || error?.code || "";
     const causeMessage = error?.cause?.message || error?.message || String(error);
-    throw new Error(`OpenAI network request failed for ${url}${causeCode ? ` [${causeCode}]` : ""}: ${causeMessage}`);
+    throw new Error(`OpenAI-compatible network request failed for ${url}${causeCode ? ` [${causeCode}]` : ""}: ${causeMessage}`);
   } finally {
     clearTimeout(timeoutHandle);
   }
 }
 
-function normalizeConversationItems(conversationItems = []) {
-  return conversationItems.map((item) => ({
-    role: item.role,
-    content: item.content
-  }));
+function normalizeMaxCompletionTokens(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 32000;
+  }
+  return Math.floor(parsed);
 }
 
-function extractOutputText(data, outputItems) {
-  if (typeof data.output_text === "string" && data.output_text.trim()) {
-    return data.output_text.trim();
+function normalizeMessages(instructions, conversationItems = []) {
+  const messages = [];
+  if (instructions) {
+    messages.push({
+      role: "system",
+      content: instructions
+    });
   }
 
-  const chunks = [];
-  walkOutputItems(outputItems, (item) => {
-    if (item.type === "output_text" && typeof item.text === "string" && item.text.trim()) {
-      chunks.push(item.text.trim());
-      return;
-    }
-    if (item.type === "text" && typeof item.text === "string" && item.text.trim()) {
-      chunks.push(item.text.trim());
-    }
-  });
-
-  return chunks.join("\n").trim();
-}
-
-function extractFunctionCalls(outputItems) {
-  const calls = [];
-  walkOutputItems(outputItems, (item) => {
-    if (item.type !== "function_call") {
-      return;
-    }
-    calls.push({
-      id: item.id || null,
-      callId: item.call_id,
-      name: item.name,
-      arguments: safeParseArguments(item.arguments)
-    });
-  });
-  return calls;
-}
-
-function walkOutputItems(outputItems, visitor) {
-  for (const item of outputItems || []) {
+  for (const item of conversationItems) {
     if (!item || typeof item !== "object") {
       continue;
     }
-    visitor(item);
-    if (Array.isArray(item.content)) {
-      walkOutputItems(item.content, visitor);
+    if (typeof item.content === "string") {
+      messages.push({
+        role: normalizeRole(item.role),
+        content: item.content
+      });
+      continue;
+    }
+
+    if (!Array.isArray(item.content)) {
+      continue;
+    }
+
+    const textBlocks = item.content.filter((block) => block?.type === "text" && typeof block.text === "string");
+    const toolUseBlocks = item.content.filter((block) => block?.type === "tool_use");
+    const toolResultBlocks = item.content.filter((block) => block?.type === "tool_result");
+
+    if (toolUseBlocks.length > 0) {
+      messages.push({
+        role: "assistant",
+        content: textBlocks.map((block) => block.text).join("\n") || null,
+        tool_calls: toolUseBlocks.map((block) => ({
+          id: block.id,
+          type: "function",
+          function: {
+            name: block.name,
+            arguments: JSON.stringify(block.input || {})
+          }
+        }))
+      });
+    } else if (textBlocks.length > 0) {
+      messages.push({
+        role: normalizeRole(item.role),
+        content: textBlocks.map((block) => block.text).join("\n")
+      });
+    }
+
+    for (const block of toolResultBlocks) {
+      messages.push({
+        role: "tool",
+        tool_call_id: block.tool_use_id,
+        content: typeof block.content === "string" ? block.content : JSON.stringify(block.content ?? "")
+      });
     }
   }
+
+  return messages;
+}
+
+function normalizeRole(role) {
+  return role === "assistant" ? "assistant" : "user";
+}
+
+function normalizeTools(toolDefinitions) {
+  return toolDefinitions
+    .filter((tool) => tool.type === "function")
+    .map((tool) => ({
+      type: "function",
+      function: {
+        name: tool.name,
+        description: tool.description || "",
+        parameters: tool.parameters || { type: "object", properties: {}, additionalProperties: false }
+      }
+    }));
+}
+
+function extractFunctionCalls(message) {
+  return (message.tool_calls || [])
+    .filter((toolCall) => toolCall?.type === "function" && toolCall.function?.name)
+    .map((toolCall) => ({
+      id: toolCall.id || null,
+      callId: toolCall.id || null,
+      name: toolCall.function.name,
+      arguments: safeParseArguments(toolCall.function.arguments)
+    }));
+}
+
+function extractThinkingBlocks(message) {
+  const blocks = [];
+  if (typeof message.reasoning_content === "string" && message.reasoning_content.trim()) {
+    blocks.push({
+      type: "thinking_summary",
+      text: message.reasoning_content.trim()
+    });
+  }
+  if (typeof message.reasoning === "string" && message.reasoning.trim()) {
+    blocks.push({
+      type: "thinking_summary",
+      text: message.reasoning.trim()
+    });
+  }
+  return blocks;
 }
 
 function safeParseArguments(raw) {
@@ -190,7 +253,7 @@ function normalizeRetryCount(value) {
 
 async function buildHttpError(response) {
   const body = await response.text();
-  return new Error(`OpenAI request failed (${response.status}): ${body}`);
+  return new Error(`OpenAI-compatible chat completions request failed (${response.status}): ${body}`);
 }
 
 function shouldRetryStatus(status) {
@@ -228,5 +291,5 @@ function debugLog(config, message) {
   if (!config?.runtime?.debug) {
     return;
   }
-  console.error(`[code-agent][openai] ${message}`);
+  console.error(`[code-agent][openai-chat] ${message}`);
 }

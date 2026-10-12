@@ -27,10 +27,10 @@ export function buildStateSnapshotSchema() {
       session: {
         type: "object",
         additionalProperties: false,
-        required: ["summary", "turnCount"],
+        required: ["summary", "transcriptTurnCount"],
         properties: {
           summary: { type: "string" },
-          turnCount: { type: "number" }
+          transcriptTurnCount: { type: "number" }
         }
       },
       governance: {

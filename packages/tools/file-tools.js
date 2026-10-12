@@ -11,6 +11,8 @@ export function createFileTools(config) {
   return [
     {
       name: "list_files",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "List files under a directory relative to the project root.",
       riskLevel: "safe",
       granularity: "medium",
@@ -29,7 +31,7 @@ export function createFileTools(config) {
         additionalProperties: false
       },
       execute: async ({ path: targetPath = ".", limit = 200 }) => {
-        const absolute = resolveWorkspacePath(config, targetPath);
+        const absolute = resolveWorkspacePath(config, targetPath, { access: "read" });
         const output = [];
         await walk(absolute, absolute, output, limit);
         return wrapSuccess(output, {
@@ -40,6 +42,8 @@ export function createFileTools(config) {
     },
     {
       name: "read_file",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Read a file from the project root and optionally limit the line range.",
       riskLevel: "safe",
       granularity: "micro",
@@ -59,7 +63,7 @@ export function createFileTools(config) {
         additionalProperties: false
       },
       execute: async ({ path: targetPath, startLine = 1, endLine = 200 }) => {
-        const absolute = resolveWorkspacePath(config, targetPath);
+        const absolute = resolveWorkspacePath(config, targetPath, { access: "read" });
         const raw = await fs.readFile(absolute, "utf8");
         const lines = raw.split("\n");
         const content = lines.slice(startLine - 1, endLine).join("\n");
@@ -72,6 +76,8 @@ export function createFileTools(config) {
     },
     {
       name: "search_files",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Search for a text pattern in project files using ripgrep when available.",
       riskLevel: "safe",
       granularity: "medium",
@@ -91,7 +97,7 @@ export function createFileTools(config) {
         additionalProperties: false
       },
       execute: async ({ pattern, path: targetPath = ".", maxResults = 50 }) => {
-        const absolute = resolveWorkspacePath(config, targetPath);
+        const absolute = resolveWorkspacePath(config, targetPath, { access: "read" });
         try {
           const { stdout } = await execFileAsync("rg", [
             "--line-number",
@@ -144,7 +150,7 @@ export function createFileTools(config) {
         additionalProperties: false
       },
       execute: async ({ path: targetPath, content }) => {
-        const absolute = resolveWorkspacePath(config, targetPath);
+        const absolute = resolveWorkspacePath(config, targetPath, { access: "write" });
         await fs.mkdir(path.dirname(absolute), { recursive: true });
         await fs.writeFile(absolute, content, "utf8");
         return wrapSuccess(targetPath, {
@@ -175,7 +181,7 @@ export function createFileTools(config) {
         additionalProperties: false
       },
       execute: async ({ path: targetPath, search, replace, all = false }) => {
-        const absolute = resolveWorkspacePath(config, targetPath);
+        const absolute = resolveWorkspacePath(config, targetPath, { access: "write" });
         const raw = await fs.readFile(absolute, "utf8");
         if (!raw.includes(search)) {
           throw new Error(`Search text not found in ${targetPath}`);

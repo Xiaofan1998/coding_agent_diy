@@ -8,6 +8,8 @@ export function createWebTools(config) {
   return [
     {
       name: "search_web",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Search the public web and return a compact list of results.",
       riskLevel: "safe",
       granularity: "medium",
@@ -48,6 +50,8 @@ export function createWebTools(config) {
     },
     {
       name: "fetch_url",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Fetch one URL and return a compact text preview.",
       riskLevel: "safe",
       granularity: "micro",

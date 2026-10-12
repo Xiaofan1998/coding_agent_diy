@@ -9,7 +9,6 @@ import { createWebTools } from "../tools/web-tools.js";
 import { createStateTools } from "../tools/state-tools.js";
 import { buildSystemPrompt } from "./prompt-builder.js";
 import { OpenAIResponsesClient } from "../llm/openai-responses.js";
-import { AnthropicMessagesClient } from "../llm/anthropic-messages.js";
 import { MockResponsesClient } from "../llm/mock-model.js";
 import { LocalFallbackAgent } from "../llm/local-fallback.js";
 import { stringifyCompact } from "../shared/json.js";
@@ -25,10 +24,12 @@ import { DashboardArtifactManager } from "../dashboard/artifact-manager.js";
 import { BundleIndexArtifactManager } from "../bundles/artifact-manager.js";
 import { ApprovalArtifactManager } from "../approvals/artifact-manager.js";
 import { StateSnapshotArtifactManager } from "../state-export/artifact-manager.js";
-import { ToolPolicyError, assertToolAllowed, getEffectiveToolPolicy } from "./tool-governance.js";
-import { buildWorkingMemory } from "./working-memory.js";
+import { ToolPolicyError, assertToolAllowed, getEffectiveToolPolicy, enrichErrorWithRecovery } from "./tool-governance.js";
+import { classifyFilesystemAccess } from "../shared/workspace-roots.js";
 import { resolveStrategyProfile } from "./strategy-mode.js";
 import { runAgentLoop } from "./agent-loop.js";
+import { microcompactContext } from "./context-compactor.js";
+import { sanitizeTranscriptMessages } from "./transcript-utils.js";
 import crypto from "node:crypto";
 
 export class AgentRuntime {
@@ -220,15 +221,42 @@ export class AgentRuntime {
     return runtime;
   }
 
-  async runUserTurn(userMessage) {
+  async runUserTurn(userMessage, options = {}) {
     if (!this.isSubagent) {
       await this.stateStore.incrementGoalTurn();
     }
-    return this.runTurn(userMessage, "user");
+    return this.runTurn(userMessage, "user", options);
   }
 
-  async runSyntheticTurn(userMessage) {
-    return this.runTurn(userMessage, "developer");
+  async *runUserTurnEvents(userMessage) {
+    const stream = createEventStream();
+    const runPromise = this.runUserTurn(userMessage, {
+      onEvent: (event) => stream.push(event)
+    })
+      .then((result) => {
+        stream.push({
+          type: "turn_result",
+          timestamp: new Date().toISOString(),
+          message: result.message
+        });
+      })
+      .catch((error) => {
+        stream.push({
+          type: "turn_error",
+          timestamp: new Date().toISOString(),
+          error: error instanceof Error ? error.message : String(error)
+        });
+      })
+      .finally(() => stream.close());
+
+    for await (const event of stream) {
+      yield event;
+    }
+    await runPromise;
+  }
+
+  async runSyntheticTurn(userMessage, options = {}) {
+    return this.runTurn(userMessage, "developer", options);
   }
 
   enqueueSteeringMessage(message) {
@@ -273,6 +301,7 @@ export class AgentRuntime {
     try {
       if (!approvedOverride) {
         assertToolAllowed(tool, policy);
+        assertFilesystemAccessAllowed(this.config, tool, args);
       } else {
         await this.stateStore.saveTrace({
           id: `trace_${crypto.randomUUID()}`,
@@ -292,6 +321,13 @@ export class AgentRuntime {
           policy,
           error
         });
+        // Enrich blocked-tool errors with recovery hints from the tool definition
+        throw enrichErrorWithRecovery(tool, error);
+      }
+      // For execution errors, wrap with recovery hints if available
+      if (tool.errorRecovery) {
+        const enriched = enrichErrorWithRecovery(tool, error instanceof Error ? error : new Error(String(error)));
+        throw enriched;
       }
       throw error;
     }
@@ -347,7 +383,7 @@ export class AgentRuntime {
     }) || null;
   }
 
-  async runTurn(userMessage, role) {
+  async runTurn(userMessage, role, options = {}) {
     const session = await this.stateStore.getSession();
     const goal = await this.stateStore.getActiveGoal();
     const activatedSkills = await this.skillDiscovery.matchSkills({
@@ -361,7 +397,17 @@ export class AgentRuntime {
     });
     const dashboardSummary = await this.stateStore.getDashboardSummary();
     const turnId = crypto.randomUUID();
+    const emitEvent = options.onEvent || (async () => {});
 
+    await emitEvent({
+      type: "turn_start",
+      timestamp: new Date().toISOString(),
+      turnId,
+      role,
+      userMessage,
+      goal: goal?.objective || null,
+      activatedSkills: activatedSkills.map((skill) => skill.name)
+    });
     await this.stateStore.saveTrace({
       id: `trace_${crypto.randomUUID()}`,
       createdAt: new Date().toISOString(),
@@ -388,30 +434,15 @@ export class AgentRuntime {
         turnId,
         finalMessage: fallback.message
       });
-      const governedSummary = buildWorkingMemory({
-        conversation: [
-        ...toConversationTurns(session.turns),
-        {
-          role,
-          content: userMessage
-        },
-        {
-          role: "assistant",
-          content: governedMessage
-        }
-        ],
-        goal: await this.stateStore.getActiveGoal(),
-        planItems: session.activePlanItems || [],
-        repoSnapshot,
-        activatedSkills
-      });
-      await this.stateStore.appendTurn({
+      const fallbackTranscript = [
+        { role, content: userMessage },
+        { role: "assistant", content: governedMessage }
+      ];
+      await this.stateStore.appendTranscriptTurn({
+        turnId,
         createdAt: new Date().toISOString(),
-        userMessage,
-        role,
-        response: governedMessage
+        transcriptMessages: fallbackTranscript
       });
-      await this.stateStore.saveSummary(governedSummary);
       await this.stateStore.saveTrace({
         id: `trace_${crypto.randomUUID()}`,
         createdAt: new Date().toISOString(),
@@ -421,6 +452,20 @@ export class AgentRuntime {
         mode: "fallback"
       });
 
+      await emitEvent({
+        type: "assistant_final",
+        timestamp: new Date().toISOString(),
+        content: governedMessage,
+        mode: "fallback"
+      });
+      await emitEvent({
+        type: "turn_end",
+        timestamp: new Date().toISOString(),
+        turnId,
+        mode: "fallback",
+        response: governedMessage
+      });
+
       return {
         ...fallback,
         message: governedMessage
@@ -428,25 +473,57 @@ export class AgentRuntime {
     }
 
     const systemPrompt = await buildSystemPrompt({
-      config: this.config,
-      toolRegistry: this.toolRegistry,
-      session,
-      goal,
-      repoSnapshot,
-      activatedSkills,
-      dashboardSummary
+      config: this.config
     });
 
-    const conversation = [
-      ...toConversationTurns(session.turns),
-      {
-        role,
-        content: userMessage
-      }
+    const memoryPrefetch = startMemoryPrefetch({
+      stateStore: this.stateStore,
+      query: userMessage,
+      limit: 5,
+      maxChars: 6000
+    });
+
+    const runtimeContextMessages = buildRuntimeContextMessages({
+      goal
+    });
+    const userTurnMessage = {
+      role,
+      content: userMessage
+    };
+    const rawConversation = [
+      ...toConversationHistory(session),
+      ...runtimeContextMessages,
+      userTurnMessage
     ];
+    const compactResult = microcompactContext({
+      systemPrompt,
+      conversation: rawConversation,
+      config: this.config,
+      createTrace: async (payload) => {
+        await emitEvent({
+          type: "context_microcompact",
+          timestamp: new Date().toISOString(),
+          beforeChars: payload.beforeChars,
+          afterChars: payload.afterChars,
+          thresholdChars: payload.thresholdChars,
+          maxContextChars: payload.maxContextChars,
+          olderMessageCount: payload.olderMessageCount || 0,
+          recentMessageCount: payload.recentMessageCount || 0
+        });
+        await this.stateStore.saveTrace({
+          id: `trace_${crypto.randomUUID()}`,
+          createdAt: new Date().toISOString(),
+          turnId,
+          ...payload
+        });
+      }
+    });
+    const conversation = compactResult.conversation;
 
     const suggestedFirstTools = dashboardSummary?.suggestedFirstTools || [];
     let finalMessage = "No response generated.";
+    let loopConversation = conversation;
+    const currentTurnStartIndex = findMessageIdentityIndex(conversation, userTurnMessage);
     try {
       const loopResult = await runAgentLoop({
         modelClient: this.modelClient,
@@ -465,9 +542,12 @@ export class AgentRuntime {
         },
         executeTool: (name, args) => this.executeTool(name, args),
         getSteeringMessages: () => this.takeSteeringMessages(),
-        getFollowUpMessages: () => this.takeFollowUpMessages()
+        getFollowUpMessages: () => this.takeFollowUpMessages(),
+        memoryPrefetch,
+        onEvent: emitEvent
       });
       finalMessage = loopResult.finalMessage;
+      loopConversation = loopResult.conversation || conversation;
     } catch (error) {
       return this.handleModelFailureFallback({
         error,
@@ -521,28 +601,21 @@ export class AgentRuntime {
       turnId,
       finalMessage
     });
-    const refreshedGoal = await this.stateStore.getActiveGoal();
-    const finalConversation = [
-      ...conversation.slice(0, -1),
-      {
-        role: "assistant",
-        content: finalMessage
-      }
-    ];
-    const summary = buildWorkingMemory({
-      conversation: finalConversation,
-      goal: refreshedGoal,
-      planItems: session.activePlanItems || [],
-      repoSnapshot,
-      activatedSkills
-    });
-    await this.stateStore.appendTurn({
+    const finalConversation = replaceLastAssistantMessage(loopConversation, finalMessage);
+    const currentTurnTranscript = finalConversation.slice(currentTurnStartIndex).filter((message) => !message?.ephemeral);
+    await this.stateStore.appendTranscriptTurn({
+      turnId,
       createdAt: new Date().toISOString(),
-      userMessage,
-      role,
-      response: finalMessage
+      transcriptMessages: currentTurnTranscript
     });
-    await this.stateStore.saveSummary(summary);
+    await emitEvent({
+      type: "turn_end",
+      timestamp: new Date().toISOString(),
+      turnId,
+      mode: "model",
+      response: finalMessage,
+      workflowRunId: workflowRun?.id || null
+    });
     await this.stateStore.saveTrace({
       id: `trace_${crypto.randomUUID()}`,
       createdAt: new Date().toISOString(),
@@ -676,31 +749,15 @@ export class AgentRuntime {
       turnId,
       finalMessage: composedMessage
     });
-    const refreshedGoal = await this.stateStore.getActiveGoal();
-    const summary = buildWorkingMemory({
-      conversation: [
-        ...toConversationTurns(session.turns),
-        {
-          role,
-          content: userMessage
-        },
-        {
-          role: "assistant",
-          content: governedMessage
-        }
-      ],
-      goal: refreshedGoal,
-      planItems: session.activePlanItems || [],
-      repoSnapshot,
-      activatedSkills
-    });
-    await this.stateStore.appendTurn({
+    const fallbackTranscript = [
+      { role, content: userMessage },
+      { role: "assistant", content: governedMessage }
+    ];
+    await this.stateStore.appendTranscriptTurn({
+      turnId,
       createdAt: new Date().toISOString(),
-      userMessage,
-      role,
-      response: governedMessage
+      transcriptMessages: fallbackTranscript
     });
-    await this.stateStore.saveSummary(summary);
     await this.stateStore.saveTrace({
       id: `trace_${crypto.randomUUID()}`,
       createdAt: new Date().toISOString(),
@@ -717,9 +774,6 @@ export class AgentRuntime {
 }
 
 function createModelClient(config) {
-  if (config.anthropic?.authToken && config.anthropic?.baseUrl) {
-    return new AnthropicMessagesClient(config);
-  }
   return new OpenAIResponsesClient(config);
 }
 
@@ -746,17 +800,178 @@ function buildExplicitEnvRuntimeOverrides() {
   return overrides;
 }
 
-function toConversationTurns(turns) {
-  return turns.flatMap((turn) => [
-    {
-      role: turn.role || "user",
-      content: turn.userMessage
+function createEventStream() {
+  const queue = [];
+  const waiters = [];
+  let closed = false;
+
+  return {
+    push(event) {
+      if (closed) {
+        return;
+      }
+      if (waiters.length > 0) {
+        waiters.shift()({ value: event, done: false });
+      } else {
+        queue.push(event);
+      }
     },
-    {
-      role: "assistant",
-      content: turn.response
+    close() {
+      closed = true;
+      while (waiters.length > 0) {
+        waiters.shift()({ value: undefined, done: true });
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return {
+        next() {
+          if (queue.length > 0) {
+            return Promise.resolve({ value: queue.shift(), done: false });
+          }
+          if (closed) {
+            return Promise.resolve({ value: undefined, done: true });
+          }
+          return new Promise((resolve) => waiters.push(resolve));
+        }
+      };
     }
-  ]);
+  };
+}
+
+function toConversationHistory(session) {
+  if (Array.isArray(session?.transcriptMessages) && session.transcriptMessages.length > 0) {
+    return sanitizeTranscriptMessages(session.transcriptMessages.map((message) => ({
+      role: message.role,
+      content: message.content
+    })));
+  }
+  return [];
+}
+
+
+function startMemoryPrefetch({ stateStore, query, limit = 5, maxChars = 6000 }) {
+  const handle = {
+    promise: null,
+    settled: false,
+    consumed: false
+  };
+  handle.promise = stateStore.findRelevantMemories(query, { limit, maxChars })
+    .then((memories) => ({ memories: Array.isArray(memories) ? memories : [] }))
+    .catch((error) => ({ memories: [], error: error instanceof Error ? error.message : String(error) }))
+    .finally(() => {
+      handle.settled = true;
+    });
+  return handle;
+}
+
+function buildRuntimeContextMessages({ goal }) {
+  if (!goal) {
+    return [];
+  }
+  return [
+    {
+      role: "user",
+      content: [
+        "<goal-context>",
+        `Active goal: ${goal.objective}`,
+        "Keep this turn aligned with the active goal. If the user's latest request conflicts with the goal, follow the latest user request and explain the conflict briefly.",
+        "</goal-context>"
+      ].join("\n"),
+      ephemeral: true
+    }
+  ];
+}
+
+function findMessageIdentityIndex(messages, target) {
+  const index = messages.findIndex((message) => message === target);
+  return index >= 0 ? index : Math.max(0, messages.length - 1);
+}
+
+function replaceLastAssistantMessage(conversation, finalMessage) {
+  const next = [...(conversation || [])];
+  for (let index = next.length - 1; index >= 0; index -= 1) {
+    if (next[index]?.role === "assistant") {
+      next[index] = replaceAssistantContent(next[index], finalMessage);
+      return next;
+    }
+  }
+  next.push({ role: "assistant", content: finalMessage });
+  return next;
+}
+
+function replaceAssistantContent(message, finalMessage) {
+  if (typeof message.content === "string") {
+    return { ...message, content: finalMessage };
+  }
+  if (!Array.isArray(message.content)) {
+    return { ...message, content: finalMessage };
+  }
+  const blocks = message.content.map((block) => ({ ...block }));
+  const textIndex = blocks.findIndex((block) => block?.type === "text");
+  if (textIndex >= 0) {
+    blocks[textIndex] = { ...blocks[textIndex], text: finalMessage };
+  } else {
+    blocks.unshift({ type: "text", text: finalMessage });
+  }
+  return { ...message, content: blocks };
+}
+
+function assertFilesystemAccessAllowed(config, tool, args = {}) {
+  const writeTargets = getFilesystemWriteTargets(tool.name, args);
+  for (const target of writeTargets) {
+    const classification = classifyFilesystemAccess(config, target.path, { access: "write" });
+    if (!classification.needsApproval) {
+      continue;
+    }
+    throw new ToolPolicyError(
+      `Tool "${tool.name}" requires approval before writing ${classification.absolute}: ${classification.reason}.`,
+      {
+        toolName: tool.name,
+        toolRisk: tool.riskLevel || "safe",
+        maxRisk: config.runtime?.maxToolRisk || "caution",
+        policyReason: classification.reason,
+        filesystemAccess: classification,
+        writeTarget: target
+      }
+    );
+  }
+}
+
+function getFilesystemWriteTargets(toolName, args = {}) {
+  if (toolName === "write_file" || toolName === "apply_patch") {
+    return [{ path: args.path || ".", source: toolName }];
+  }
+
+  if (toolName !== "run_shell") {
+    return [];
+  }
+
+  const command = String(args.command || "");
+  const cwd = args.cwd || ".";
+  if (!shellCommandLooksWriteLike(command)) {
+    return [];
+  }
+
+  const absolutePaths = extractAbsolutePaths(command).map((item) => ({ path: item, source: "run_shell.command" }));
+  if (absolutePaths.length > 0) {
+    return absolutePaths;
+  }
+
+  return [{ path: cwd, source: "run_shell.cwd" }];
+}
+
+function shellCommandLooksWriteLike(command) {
+  const text = String(command || "");
+  return /(^|[\s;&|])(rm|mv|cp|touch|mkdir|rmdir|chmod|chown|tee|install)\b/.test(text)
+    || /(^|[\s;&|])sed\s+-i\b/.test(text)
+    || /(^|\s)(>|>>)(\s|$)/.test(text)
+    || /\b(open|writeFile|appendFile|createWriteStream)\s*\(/.test(text);
+}
+
+function extractAbsolutePaths(command) {
+  const matches = String(command || "").match(/\/(?:[^\s'";|&<>`$\\]|\\.)+/g) || [];
+  return [...new Set(matches.map((item) => item.replace(/\\([\s'";|&<>`$\\])/g, "$1")))]
+    .filter((item) => item.length > 1);
 }
 
 AgentRuntime.prototype.createApprovalRequestForPolicyBlock = async function createApprovalRequestForPolicyBlock({

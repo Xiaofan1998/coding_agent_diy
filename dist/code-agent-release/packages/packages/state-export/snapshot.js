@@ -9,8 +9,8 @@ export async function buildStateSnapshot({ config, stateStore, generatedAt = new
     generatedAt,
     projectRoot: config.projectRoot,
     session: {
-      summary: session.summary || "",
-      turnCount: (session.turns || []).length
+      transcriptTurnCount: session.transcriptTurnCount || 0,
+      transcriptTurnCount: session.transcriptTurnCount || 0
     },
     governance: dashboard.governanceSummary || {
       openApprovalCount: 0,

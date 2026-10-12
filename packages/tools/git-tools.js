@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { wrapSuccess, wrapError } from "./registry.js";
+import { summarizeGitStatus } from "../context/repo-context.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -8,6 +9,8 @@ export function createGitTools(config) {
   return [
     {
       name: "git_status",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect git status for the current project if it is a git repository.",
       riskLevel: "safe",
       granularity: "medium",
@@ -27,13 +30,16 @@ export function createGitTools(config) {
         if (!result.ok) {
           return wrapError(new Error(result.message));
         }
-        return wrapSuccess(result.stdout || "(clean)", {
-          summary: result.stdout ? `${result.stdout.split("\n").length} files changed` : "Working tree clean"
+        const status = result.stdout ? summarizeGitStatus(result.stdout) : "(clean)";
+        return wrapSuccess(status, {
+          summary: result.stdout ? `${result.stdout.split("\n").filter(Boolean).length} files changed` : "Working tree clean"
         });
       }
     },
     {
       name: "git_diff",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect git diff for the current project if it is a git repository.",
       riskLevel: "safe",
       granularity: "medium",
@@ -63,6 +69,8 @@ export function createGitTools(config) {
     },
     {
       name: "git_log",
+      readOnlyHint: true,
+      concurrencySafeHint: true,
       description: "Inspect recent git history for the current project if it is a git repository.",
       riskLevel: "safe",
       granularity: "medium",
