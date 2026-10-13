@@ -1225,6 +1225,12 @@ function renderRuntimeEvent(event) {
       return `⬢ context compacted · source=${event.source || "traditional"} · ${event.beforeChars ?? "?"} → ${event.afterChars ?? "?"} chars (threshold ${event.thresholdChars ?? "?"})`;
     case "session_memory_extracted":
       return `◈ session memory extracted · ${event.currentTokens ?? "?"} tokens · ${event.path || "summary.md"}`;
+    case "auto_dream_ran":
+      return `✦ auto-dream ran · added=${event.addedCount ?? 0}/${event.candidateCount ?? 0} · ${event.memoryPath || "MEMORY.md"}`;
+    case "auto_dream_error":
+      return `✕ auto-dream error · ${event.error || "unknown error"}`;
+    case "auto_dream_skipped":
+      return event.reason ? `◌ auto-dream skipped · ${event.reason}` : null;
     case "loop_start":
       return `↻ loop started`;
     case "loop_messages_injected":

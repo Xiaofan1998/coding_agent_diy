@@ -187,6 +187,34 @@ assertIncludes(compactPromptFormatting.stdout, "\"hasSummaryInstruction\":true",
 assertIncludes(compactPromptFormatting.stdout, "\"formatted\":\"usable summary\"", "Expected compact formatter to keep only the summary body.");
 assertIncludes(compactPromptFormatting.stdout, "\"stripsAnalysis\":true", "Expected compact formatter to strip analysis scratchpad text.");
 
+const autoDream = runWithEnv(
+  [
+    "--input-type=module",
+    "--eval",
+    [
+      "import fs from 'node:fs/promises';",
+      "import path from 'node:path';",
+      "import { loadConfig } from './packages/shared/config.js';",
+      "import { SqliteStateStore } from './packages/memory/state-store.js';",
+      "import { SessionMemoryManager } from './packages/core/session-memory.js';",
+      "import { AutoDreamManager } from './packages/core/auto-dream.js';",
+      "const config = loadConfig(process.cwd());",
+      "const store = await SqliteStateStore.create(config);",
+      "await store.appendTranscriptTurn({ turnId: 'dream-1', transcriptMessages: [{ role: 'user', content: 'Remember 用户偏好：回答默认使用中文。' }, { role: 'assistant', content: '已记录。' }] });",
+      "const manager = new AutoDreamManager({ config, stateStore: store, sessionMemoryManager: new SessionMemoryManager(config) });",
+      "const events = [];",
+      "const result = await manager.maybeRun({ emitEvent: async (event) => events.push(event), createTrace: async () => {} });",
+      "const memory = await fs.readFile(path.join(config.memoryDir, 'MEMORY.md'), 'utf8');",
+      "console.log(JSON.stringify({ ran: result.ran, addedCount: result.addedCount, eventType: events[0]?.type, includesPreference: memory.includes('回答默认使用中文'), hasMeta: await fs.access(path.join(config.memoryDir, '.auto-dream.json')).then(() => true).catch(() => false) }));"
+    ].join(" ")
+  ],
+  { CODE_AGENT_HOME: path.join(stateDir, "auto-dream"), CODE_AGENT_AUTO_DREAM: "1", CODE_AGENT_AUTO_DREAM_MIN_HOURS: "0", CODE_AGENT_AUTO_DREAM_MIN_TURNS: "1" }
+);
+assertIncludes(autoDream.stdout, "\"ran\":true", "Expected auto-dream to run when gates are satisfied.");
+assertIncludes(autoDream.stdout, "\"eventType\":\"auto_dream_ran\"", "Expected auto-dream to emit a run event.");
+assertIncludes(autoDream.stdout, "\"includesPreference\":true", "Expected auto-dream to write explicit memory into MEMORY.md.");
+assertIncludes(autoDream.stdout, "\"hasMeta\":true", "Expected auto-dream metadata to be persisted.");
+
 const cliHelp = run(["./apps/cli/index.js", "help"]);
 assertIncludes(cliHelp.stdout, "goal resume <id>", "Expected CLI help to expose goal resume.");
 assertIncludes(cliHelp.stdout, "run-events <prompt>", "Expected CLI help to expose JSONL event streaming runs.");

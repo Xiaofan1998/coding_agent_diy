@@ -30,6 +30,7 @@ import { resolveStrategyProfile } from "./strategy-mode.js";
 import { runAgentLoop } from "./agent-loop.js";
 import { compactContext } from "./context-compactor.js";
 import { SessionMemoryManager } from "./session-memory.js";
+import { AutoDreamManager } from "./auto-dream.js";
 import { sanitizeTranscriptMessages } from "./transcript-utils.js";
 import crypto from "node:crypto";
 
@@ -73,6 +74,11 @@ export class AgentRuntime {
     this.pendingSteeringMessages = [];
     this.pendingFollowUpMessages = [];
     this.sessionMemoryManager = new SessionMemoryManager(config);
+    this.autoDreamManager = new AutoDreamManager({
+      config,
+      stateStore,
+      sessionMemoryManager: this.sessionMemoryManager
+    });
   }
 
   static async create(config, options = {}) {
@@ -613,23 +619,28 @@ export class AgentRuntime {
     });
     try {
       const updatedSession = await this.stateStore.getSession();
+      const traceAfterTurn = async (payload) => {
+        await this.stateStore.saveTrace({
+          id: `trace_${crypto.randomUUID()}`,
+          createdAt: new Date().toISOString(),
+          turnId,
+          ...payload
+        });
+      };
       await this.sessionMemoryManager.maybeExtract({
         transcriptMessages: updatedSession.transcriptMessages || [],
         emitEvent: async (event) => emitEvent({ ...event, timestamp: new Date().toISOString() }),
-        createTrace: async (payload) => {
-          await this.stateStore.saveTrace({
-            id: `trace_${crypto.randomUUID()}`,
-            createdAt: new Date().toISOString(),
-            turnId,
-            ...payload
-          });
-        }
+        createTrace: traceAfterTurn
+      });
+      await this.autoDreamManager.maybeRun({
+        emitEvent: async (event) => emitEvent({ ...event, timestamp: new Date().toISOString() }),
+        createTrace: traceAfterTurn
       });
     } catch (error) {
       await this.stateStore.saveTrace({
         id: `trace_${crypto.randomUUID()}`,
         createdAt: new Date().toISOString(),
-        kind: "session_memory_extract_error",
+        kind: "post_turn_memory_error",
         turnId,
         error: error instanceof Error ? error.message : String(error)
       });
